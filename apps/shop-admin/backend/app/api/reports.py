@@ -54,13 +54,13 @@ def list_expenses(start: str = "", end: str = "", category_id: str = "", payment
                                   payee=payee, q=q, status=status)
     result = paginate(rows, page, page_size)
     result["total_amount"] = float(sum(e["amount"] for e in rows if e["status"] == "active"))
-    result["items"] = [expense_service.present(e) for e in result["items"]]
+    result["items"] = [expense_service.present(e, ctx.settings.base_path) for e in result["items"]]
     return result
 
 
 @router.post("/expenses")
 def add_expense(body: ExpenseIn, user: dict = Depends(require("expenses.add")), ctx: AppContext = Depends(get_ctx)):
-    return expense_service.present(expense_service.create(ctx, user, body.model_dump()))
+    return expense_service.present(expense_service.create(ctx, user, body.model_dump()), ctx.settings.base_path)
 
 
 @router.get("/expenses/{eid}")
@@ -68,23 +68,23 @@ def get_expense(eid: str, user: dict = Depends(require("expenses.view")), ctx: A
     e = ctx.store.get("expenses", eid)
     if e is None:
         raise NotFound("Expense not found.")
-    return expense_service.present(e)
+    return expense_service.present(e, ctx.settings.base_path)
 
 
 @router.put("/expenses/{eid}")
 def edit_expense(eid: str, body: ExpenseUpdateIn, user: dict = Depends(require("expenses.edit")), ctx: AppContext = Depends(get_ctx)):
-    return expense_service.present(expense_service.update(ctx, user, eid, body.model_dump(exclude_unset=True)))
+    return expense_service.present(expense_service.update(ctx, user, eid, body.model_dump(exclude_unset=True)), ctx.settings.base_path)
 
 
 @router.post("/expenses/{eid}/cancel")
 def cancel_expense(eid: str, body: CancelIn, user: dict = Depends(require("expenses.cancel")), ctx: AppContext = Depends(get_ctx)):
-    return expense_service.present(expense_service.cancel(ctx, user, eid, body.reason))
+    return expense_service.present(expense_service.cancel(ctx, user, eid, body.reason), ctx.settings.base_path)
 
 
 @router.post("/expenses/{eid}/receipt")
 def upload_receipt(eid: str, file: UploadFile = File(...), user: dict = Depends(require("expenses.add", "expenses.edit")),
                    ctx: AppContext = Depends(get_ctx)):
-    return expense_service.present(expense_service.save_receipt(ctx, user, eid, file.filename or "", read_upload(file, 8, "receipt")))
+    return expense_service.present(expense_service.save_receipt(ctx, user, eid, file.filename or "", read_upload(file, 8, "receipt")), ctx.settings.base_path)
 
 
 # ------------------------------------------------------------- dashboard

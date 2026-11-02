@@ -21,6 +21,15 @@ jobs:
         run: |
           npx supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,realtime,postgres-meta
           npx supabase test db
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Shop software online mode (against the local Supabase)
+        run: |
+          eval "$(npx supabase status -o env | grep -E '^(API_URL|SECRET_KEY|SERVICE_ROLE_KEY)=')"
+          pip install -r apps/shop-admin/backend/requirements.txt
+          cd apps/shop-admin/backend
+          SHOP_CLOUD_TEST_URL="$API_URL" SHOP_CLOUD_TEST_KEY="${SECRET_KEY:-$SERVICE_ROLE_KEY}" python -m pytest -q tests/test_cloud.py
       - name: Build website
         run: pnpm --filter @abh/web build
         env:
@@ -48,3 +57,5 @@ jobs:
         with:
           node-version: 22
       - run: cd frontend && npm ci && npm run build
+      - name: Online gate (Cloudflare Worker)
+        run: cd cloud && npm ci && npm run typecheck && npm test

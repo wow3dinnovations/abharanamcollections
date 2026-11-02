@@ -124,9 +124,9 @@ def search(ctx: AppContext, *, start: str = "", end: str = "", category_id: str 
     return out
 
 
-def present(e: dict) -> dict:
+def present(e: dict, base_path: str = "") -> dict:
     out = dict(e)
-    out["receipt_url"] = f"/api/files/expenses/{Path(e['receipt']).name}" if e.get("receipt") else None
+    out["receipt_url"] = f"{base_path}/api/files/expenses/{Path(e['receipt']).name}" if e.get("receipt") else None
     return out
 
 

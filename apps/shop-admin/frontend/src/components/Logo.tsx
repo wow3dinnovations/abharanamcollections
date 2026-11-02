@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
+import { fileUrl } from '../services/api'
 
 /** Shows the uploaded logo (assets/logo/logo.png). Until a file exists, an elegant monogram is used. */
 export function Logo({ size = 48, showText = false, light = false }: { size?: number; showText?: boolean; light?: boolean }) {
   const { branding } = useAuth()
   const [failed, setFailed] = useState(false)
-  const src = `/api/branding/logo?v=${branding.has_logo ? 1 : 0}`
+  const src = fileUrl('/api/branding/logo', { v: branding.has_logo ? 1 : 0 })
   return (
     <div className="flex items-center gap-3">
       {branding.has_logo && !failed ? (

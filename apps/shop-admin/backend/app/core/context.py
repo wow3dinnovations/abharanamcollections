@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
 from app.core.config import Settings
 from app.core.security import LoginThrottle
@@ -15,3 +16,4 @@ class AppContext:
     store: JsonStore
     backups: BackupManager
     throttle: LoginThrottle = field(default_factory=LoginThrottle)
+    file_mirror: Any = None        # app.storage.cloud.FileMirror in online mode

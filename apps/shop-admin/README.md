@@ -178,6 +178,19 @@ Full list: `docs/troubleshooting.md`.
 * Staff need the **Publish to Website** permission to use the page.
 * Customers send enquiries on the website/app. You see them in the website's **Admin → Enquiries**; when they buy, bill them in the POS as usual.
 
+## 15. Online (1gram.abharanamcollections.com/shop-admin)
+
+The same software also runs online, so it can be used from anywhere. Setup is in the repository's
+`docs/GO-LIVE.md`, step 3. How it works:
+
+* `cloud/` is a small Cloudflare Worker on `1gram.abharanamcollections.com/shop-admin*`. It lets only people
+  allowed by **Cloudflare Access** through, then passes the request to the software running in one
+  **Cloudflare Container** (built from `Dockerfile`). The container sleeps after 30 minutes without use.
+* With `SHOP_CLOUD=1` the data files are kept in Supabase (`backend/app/storage/cloud.py`): loaded at start-up,
+  and every save goes to Supabase first, all or nothing. Photos, receipts, logo and backups are kept in the
+  private `shop-files` bucket. The application itself works exactly as on the shop computer.
+* `scripts\upload-to-cloud.bat` copies the shop computer's data online once.
+
 ---
 
-*For developers:* FastAPI (Python) + React/Vite/TypeScript/Tailwind. Tests: `bash scripts/run_tests.sh`. **No SQL database is used or allowed.**
+*For developers:* FastAPI (Python) + React/Vite/TypeScript/Tailwind. Tests: `bash scripts/run_tests.sh`. The application stores JSON records only (no SQL queries); online, Supabase just keeps those records.

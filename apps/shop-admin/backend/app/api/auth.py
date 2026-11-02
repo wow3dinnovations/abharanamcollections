@@ -27,7 +27,7 @@ def _check_delegation(actor: dict, perms, target_id: str | None = None) -> None:
 
 def _set_cookie(ctx: AppContext, response: Response, token: str) -> None:
     response.set_cookie(COOKIE_NAME, token, max_age=ctx.settings.session_hours * 3600, httponly=True,
-                        samesite="lax", secure=ctx.settings.cookie_secure, path="/")
+                        samesite="lax", secure=ctx.settings.cookie_secure, path=ctx.settings.base_path or "/")
 
 
 @router.get("/auth/setup-status")
@@ -53,7 +53,7 @@ def login(body: LoginIn, response: Response, ctx: AppContext = Depends(get_ctx))
 @router.post("/auth/logout")
 def logout(response: Response, user: dict = Depends(current_user), ctx: AppContext = Depends(get_ctx)):
     auth_service.logout(ctx, user)
-    response.delete_cookie(COOKIE_NAME, path="/")
+    response.delete_cookie(COOKIE_NAME, path=ctx.settings.base_path or "/")
     return {"ok": True}
 
 

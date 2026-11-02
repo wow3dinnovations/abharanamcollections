@@ -70,7 +70,7 @@ def build(ctx: AppContext, user: dict) -> dict:
         recent = sorted(prods, key=lambda p: p["date_added"], reverse=True)[:6]
         out["recent_products"] = [{"id": p["id"], "name": p["name"], "sku": p["sku"], "selling_price": p["selling_price"],
                                    "quantity": inventory_service.total_stock(p), "date_added": p["date_added"],
-                                   "image_url": f"/api/files/products/{p['image'].split('/')[-1]}?v={p.get('image_version', 0)}" if p.get("image") else None} for p in recent]
+                                   "image_url": ctx.settings.url(f"/api/files/products/{p['image'].split('/')[-1]}?v={p.get('image_version', 0)}") if p.get("image") else None} for p in recent]
 
     # ---------------------------------------------------------------- expenses
     if _has(user, "expenses.view", "reports.expenses", "reports.profitability"):

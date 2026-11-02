@@ -6,7 +6,7 @@ Customer website, Android app and shop software for **Abharanam Collections**, a
 |---|---|---|---|
 | **Website** – 1gram.abharanamcollections.com | Customers browse every category, search and filter, see photos, prices and stock, keep a wishlist and send an enquiry (or WhatsApp). Admin pages for enquiries, product visibility, bestsellers, extra photos, categories and settings. | Next.js on Cloudflare Workers | `apps/web` (admin at `/admin`) |
 | **Android app** (iPhone later) | Same catalog as the website: home, shop with filters, product page, wishlist, enquiry bag, login with emailed code, my enquiries. | Expo (React Native) | `apps/mobile` |
-| **Shop software** | Runs on the shop computer: add products, print barcode tags (Udyama UDY 420B, 12×18 mm), stock per location, POS billing, purchases, expenses, reports, backups. **New:** *Administration → Website & App* publishes products, prices, stock and photos to the website and app. | Python (FastAPI) + React, data in JSON files | `apps/shop-admin` |
+| **Shop software** | Online at `1gram.abharanamcollections.com/shop-admin` (only for the owner, behind Cloudflare Access; can still run on the shop computer): add products, print barcode tags (Udyama UDY 420B, 12×18 mm), stock per location, POS billing, purchases, expenses, reports, backups. **New:** *Administration → Website & App* publishes products, prices, stock and photos to the website and app. | Python (FastAPI) + React, JSON records; online they are kept in Supabase's private `shop_private` schema; runs in a Cloudflare Container | `apps/shop-admin` |
 | Online database, logins, photos | | Supabase (Postgres) | `supabase/` |
 | Shared logic (₹ formatting, filters, enquiry bag, WhatsApp message) | | TypeScript | `packages/core` |
 
@@ -24,7 +24,9 @@ Customer website, Android app and shop software for **Abharanam Collections**, a
 * The shop software stays the **master copy**. Add products and print tags there as you do today; sell in the POS.
   Stock goes down on the website automatically on the next publish.
 * Only safe fields leave the shop: name, SKU, selling price, description, collection, material, colour, size,
-  tags, total stock and the photo. **Purchase rates, vendors, locations, sales, customers and expenses never leave the shop computer.**
+  tags, total stock and the photo. **Purchase rates, vendors, locations, sales, customers and expenses are never
+  readable by the website or app**: they live in the private `shop_private` schema and `shop-files` bucket, reachable
+  only with the service key that only the shop software has.
 * Customers don't pay online. They send an **enquiry** (saved in the website admin) and can also send it on WhatsApp.
   You confirm availability, delivery and payment with them, then bill it in the POS.
 
@@ -59,7 +61,7 @@ pnpm --filter @abh/web dev    # website on http://127.0.0.1:3000
 pnpm test                 # shared logic (prices, filters, enquiry bag, WhatsApp text)
 pnpm typecheck            # website, app and packages
 npx supabase test db      # database security: hidden products, enquiries, prices, admin-only access
-cd apps/shop-admin/backend && python -m pytest -q   # shop software (155 tests, incl. website publishing)
+cd apps/shop-admin/backend && python -m pytest -q   # shop software (165 tests, incl. website publishing; online-mode tests need SHOP_CLOUD_TEST_URL/KEY)
 ```
 
 ## Going live

@@ -12,6 +12,11 @@ export class ApiError extends Error {
   }
 }
 
+/** "" on the shop computer, "/shop-admin" online (under 1gram.abharanamcollections.com). */
+export const BASE = import.meta.env.BASE_URL.replace(/\/$/, '')
+export const ONLINE = BASE !== ''
+const withBase = (url: string) => (url.startsWith('/') ? BASE + url : url)
+
 let onUnauthorized: (() => void) | null = null
 export function setUnauthorizedHandler(fn: (() => void) | null) {
   onUnauthorized = fn
@@ -41,9 +46,9 @@ async function request<T>(method: string, url: string, body?: unknown, isForm = 
   }
   let res: Response
   try {
-    res = await fetch(url, init)
+    res = await fetch(withBase(url), init)
   } catch {
-    throw new ApiError('Cannot reach the ABHARANAM server. Is the application still running?', 0, 'NETWORK')
+    throw new ApiError(ONLINE ? 'Cannot reach the shop software. Check the internet connection and try again.' : 'Cannot reach the ABHARANAM server. Is the application still running?', 0, 'NETWORK')
   }
   if (res.status === 204) return undefined as T
   const ctype = res.headers.get('content-type') || ''
@@ -51,7 +56,7 @@ async function request<T>(method: string, url: string, body?: unknown, isForm = 
   if (!res.ok) {
     // 500/502/503/504 with no message from our app = the Python program is not running (the screen server or a proxy answered instead)
     if ([500, 502, 503, 504].includes(res.status) && !(data && data.detail)) {
-      throw new ApiError('The ABHARANAM program is not running. Start it (double-click scripts\\start.bat), then refresh this page.', res.status, 'SERVER_DOWN')
+      throw new ApiError(ONLINE ? 'The shop software is starting up. Wait a few seconds, then refresh this page.' : 'The ABHARANAM program is not running. Start it (double-click scripts\\start.bat), then refresh this page.', res.status, 'SERVER_DOWN')
     }
     const msg = (data && (data.detail as string)) || `Request failed (${res.status})`
     if (res.status === 401 && !url.includes('/auth/login') && !url.includes('/auth/setup')) onUnauthorized?.()
@@ -70,5 +75,5 @@ export const api = {
 
 /** Address of a file/report the browser should download or show (cookie login is sent automatically). */
 export function fileUrl(path: string, params?: Query) {
-  return path + qs(params)
+  return withBase(path) + qs(params)
 }

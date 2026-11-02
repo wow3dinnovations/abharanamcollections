@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { BASE } from './services/api'
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { PageLoader } from './components/ui'
 import { AuthProvider, useAuth } from './hooks/useAuth'
@@ -46,7 +47,7 @@ function Guard({ perms, children }: { perms: string[]; children: ReactNode }) {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={BASE || undefined}>
       <ToastProvider>
         <AuthProvider>
           <Routes>

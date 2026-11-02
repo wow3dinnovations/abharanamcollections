@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import { Logo } from '../components/Logo'
 import { Button, ErrorBox, Field, Input, Notice, PageLoader } from '../components/ui'
 import { useAuth } from '../hooks/useAuth'
-import { ApiError } from '../services/api'
+import { ApiError, ONLINE } from '../services/api'
 
 export function LoginPage() {
   const { user, loading, needsSetup, serverDown, login, setup, branding, refresh } = useAuth()
@@ -53,6 +53,11 @@ export function LoginPage() {
         </div>
         {serverDown ? (
           <div className="space-y-4 rounded-2xl border border-gold-300/40 bg-cream p-7 shadow-2xl" role="alert">
+            {ONLINE ? (<>
+            <h2 className="font-display text-2xl font-semibold text-maroon-900">The shop software is starting</h2>
+            <p className="text-sm text-ink/80">It sleeps when nobody has used it for a while and takes a few seconds to wake up.</p>
+            <Button variant="gold" size="lg" className="w-full" onClick={() => refresh()}>Try again</Button>
+            </>) : (<>
             <h2 className="font-display text-2xl font-semibold text-maroon-900">The program is not running</h2>
             <p className="text-sm text-ink/80">This page opened, but the ABHARANAM program that holds your data is switched off, so nobody can log in yet.</p>
             <ol className="list-decimal space-y-1 pl-5 text-sm text-ink/80">
@@ -61,6 +66,7 @@ export function LoginPage() {
               <li>Keep the black window open, then press the button below.</li>
             </ol>
             <Button variant="gold" size="lg" className="w-full" onClick={() => refresh()}>I started it - try again</Button>
+            </>)}
           </div>
         ) : (
         <form onSubmit={submit} className="space-y-4 rounded-2xl border border-gold-300/40 bg-cream p-7 shadow-2xl">

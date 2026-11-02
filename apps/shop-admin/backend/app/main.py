@@ -41,21 +41,34 @@ def setup_logging(settings: Settings) -> None:
     root.setLevel(logging.INFO)
 
 
-def build_context(settings: Settings) -> AppContext:
-    store = JsonStore(settings.data_dir, SPECS).open()
+def build_context(settings: Settings, cloud_factory=None) -> AppContext:
+    store = JsonStore(settings.data_dir, SPECS)
+    mirror = None
+    if settings.cloud:
+        # Online: Supabase is the master copy.  Bring everything down before opening.
+        from app.storage import cloud
+        store.remote, mirror = cloud.connect(settings.base_dir, cloud_factory)
+        files = mirror.pull()
+        records = store.seed_from_remote()
+        log.info("Online mode: loaded %s records and %s files from Supabase", records, files)
+    store.open()
     backups = BackupManager(store, settings.backup_dir)
     ctx = AppContext(settings=settings, store=store, backups=backups)
+    ctx.file_mirror = mirror
     bootstrap.bootstrap(ctx)
+    if mirror is not None:
+        mirror.sync()
+        mirror.start()
     return ctx
 
 
-def create_app(settings: Settings | None = None, *, auto_backup: bool = True) -> FastAPI:
+def create_app(settings: Settings | None = None, *, auto_backup: bool = True, cloud_factory=None) -> FastAPI:
     settings = settings or load_settings()
     setup_logging(settings)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        ctx = build_context(settings)
+        ctx = build_context(settings, cloud_factory)
         app.state.ctx = ctx
         worker = publisher = None
         if auto_backup:
@@ -71,6 +84,8 @@ def create_app(settings: Settings | None = None, *, auto_backup: bool = True) ->
                 worker.stop()
             if publisher:
                 publisher.stop()
+            if ctx.file_mirror is not None:
+                ctx.file_mirror.stop()
             ctx.store.close()
 
     debug = os.environ.get("ABH_DEBUG") == "1"       # the developer API pages are off unless explicitly switched on

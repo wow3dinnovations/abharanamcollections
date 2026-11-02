@@ -129,6 +129,7 @@ class JsonStore:
         self.recovered_from_crash: str = ""
         self._fault_hook: Callable[[str, str], None] | None = None   # used by tests only
         self.is_open = False
+        self.remote: Any = None        # app.storage.cloud.CloudRecords in online mode (the master copy)
 
     # ------------------------------------------------------------------ lifecycle
     def open(self) -> "JsonStore":
@@ -145,6 +146,55 @@ class JsonStore:
             self.load_all()
             self.is_open = True
         return self
+
+    # ------------------------------------------------------------------ online mode
+    def seed_from_remote(self) -> int:
+        """Online mode: write the local data files from the copy saved online.  Returns the records loaded."""
+        if self.remote is None:
+            return 0
+        with self._lock:
+            online = self.remote.pull()
+            self.data_dir.mkdir(parents=True, exist_ok=True)
+            total = 0
+            for name, spec in self.specs.items():
+                path = self.path(name)
+                saved = online.get(name)
+                if saved is None:
+                    path.unlink(missing_ok=True)          # never saved online yet: starts empty
+                    continue
+                if spec.kind == "doc":
+                    payload = saved.get("doc") if isinstance(saved.get("doc"), dict) else copy.deepcopy(spec.default_doc)
+                    count = 0
+                else:
+                    payload = saved.get("records") or []
+                    count = len(payload)
+                total += count
+                _fsync_write(path, _dump(self._envelope(spec, payload, saved["revision"]), count))
+            return total
+
+    def _remote_ops(self, tx: "Transaction", touched: list[str], new_revision: dict[str, int]) -> list[dict]:
+        ops = []
+        for name in touched:
+            spec = self.specs[name]
+            op: dict[str, Any] = {"c": name, "rev": new_revision[name], "id_field": spec.id_field}
+            if spec.kind == "doc":
+                op["doc"] = tx._docs[name]
+            else:
+                changes = tx._changes.get(name, {})
+                inserted = [rid for rid in dict.fromkeys(tx._inserted.get(name, [])) if changes.get(rid) is not None]
+                new_ids = set(inserted)
+                op["up"] = [rec for rid, rec in changes.items() if rec is not None and rid not in new_ids] + \
+                           [changes[rid] for rid in inserted]
+                op["del"] = [rid for rid, rec in changes.items() if rec is None and rid in self._index[name]]
+            ops.append(op)
+        return ops
+
+    def _reload_from_remote(self) -> None:
+        try:
+            self.seed_from_remote()
+            self.load_all()
+        except Exception:  # pragma: no cover - the original error is what the user needs to see
+            log.exception("Reloading from the online copy failed")
 
     def close(self) -> None:
         with self._lock:
@@ -380,6 +430,19 @@ class JsonStore:
                 tmp.unlink(missing_ok=True)
             raise
 
+        # 3b. online mode: save online first (all or nothing).  If that fails, nothing changes here either.
+        if self.remote is not None:
+            try:
+                self.remote.commit(self._remote_ops(tx, touched, new_revision))
+            except Exception as exc:
+                for tmp in tmp_files.values():
+                    tmp.unlink(missing_ok=True)
+                if exc.__class__.__name__ == "StaleData":
+                    self._reload_from_remote()
+                if isinstance(exc, StorageError):
+                    raise
+                raise StorageError("Could not save online. Nothing was changed; please try again.") from exc
+
         # 4. journal + keep previous versions, then swap all files in
         journal = self.data_dir / JOURNAL_NAME
         entries = [{"file": self.specs[n].filename, "existed": self.path(n).exists()} for n in touched]
@@ -500,6 +563,24 @@ class JsonStore:
         The caller must already have validated the source files and made a backup.
         """
         with self._lock:
+            if self.remote is not None:
+                cols = []
+                for name, spec in self.specs.items():
+                    src = Path(source_dir) / spec.filename
+                    if not src.exists():
+                        continue
+                    raw = _loads(src.read_bytes())
+                    if isinstance(raw, list):
+                        raw = {"records": raw}
+                    rev = self._meta[name].revision + 1 if name in self._meta else 1
+                    col: dict[str, Any] = {"c": name, "rev": rev, "id_field": spec.id_field}
+                    if spec.kind == "doc":
+                        col["doc"] = raw.get("data") or {}
+                    else:
+                        col["records"] = raw.get("records") or []
+                    cols.append(col)
+                self.remote.replace(cols)
+            pushed = {c["c"]: c["rev"] for c in cols} if self.remote is not None else {}
             staged: list[tuple[Path, Path]] = []
             try:
                 for name, spec in self.specs.items():
@@ -515,6 +596,9 @@ class JsonStore:
                 for tmp, _ in staged:
                     tmp.unlink(missing_ok=True)
             self.load_all()
+            for name, rev in pushed.items():          # keep the local revisions in step with the online copy
+                if name in self._meta:
+                    self._meta[name].revision = rev
 
 
 def _short_error(exc: Exception) -> str:

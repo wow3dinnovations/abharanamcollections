@@ -1,0 +1,22 @@
+{
+  // The shop software online at 1gram.abharanamcollections.com/shop-admin (admin only).
+  // Deployed by .github/workflows/deploy-shop.yml.  Secrets (set once, see docs/GO-LIVE.md):
+  //   WEBSITE_SUPABASE_URL, WEBSITE_SUPABASE_SERVICE_KEY, ACCESS_TEAM_DOMAIN, ACCESS_AUD
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "abharanam-shop-admin",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "routes": [
+    { "pattern": "1gram.abharanamcollections.com/shop-admin*", "zone_name": "abharanamcollections.com" }
+  ],
+  "containers": [
+    { "class_name": "ShopSoftware", "image": "../Dockerfile", "instance_type": "basic", "max_instances": 1 }
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "SHOP", "class_name": "ShopSoftware" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ShopSoftware"] }],
+  "observability": { "enabled": true }
+}

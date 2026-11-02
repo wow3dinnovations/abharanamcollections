@@ -114,7 +114,7 @@ export function ImportPage() {
   const reset = () => { setStep(1); setPre(null); setVal(null); setDone(null); setErr('') }
   const errorReport = async () => {
     if (!pre) return
-    const res = await fetch('/api/import/products/error-report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ import_id: pre.import_id, mapping }), credentials: 'same-origin' })
+    const res = await fetch(fileUrl('/api/import/products/error-report'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ import_id: pre.import_id, mapping }), credentials: 'same-origin' })
     if (!res.ok) return toast('Could not create the error report', 'error')
     const url = URL.createObjectURL(await res.blob()); const a = document.createElement('a'); a.href = url; a.download = 'ABHARANAM_import_errors.xlsx'; a.click(); URL.revokeObjectURL(url)
   }
@@ -215,7 +215,7 @@ export function ExportPage() {
   const exportAll = async () => {
     setBusy(true)
     try {
-      const res = await fetch('/api/data/export-all', { method: 'POST', credentials: 'same-origin' })
+      const res = await fetch(fileUrl('/api/data/export-all'), { method: 'POST', credentials: 'same-origin' })
       if (!res.ok) throw new Error()
       const url = URL.createObjectURL(await res.blob()); const a = document.createElement('a'); a.href = url; a.download = 'ABHARANAM_all_data.zip'; a.click(); URL.revokeObjectURL(url)
       toast('All data exported.')

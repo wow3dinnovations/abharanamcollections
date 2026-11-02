@@ -117,7 +117,7 @@ def present(ctx: AppContext, p: dict, user: dict, maps: dict | None = None, on=N
     out["is_low_stock"] = 0 < qty <= cfg["low_stock_threshold"]
     out["is_old_stock"] = qty > 0 and days > cfg["old_stock_days"]
     out["retail_value"] = f(D(p["selling_price"]) * qty)
-    out["image_url"] = f"/api/files/products/{Path(p['image']).name}?v={p.get('image_version', 0)}" if p.get("image") else None
+    out["image_url"] = ctx.settings.url(f"/api/files/products/{Path(p['image']).name}?v={p.get('image_version', 0)}") if p.get("image") else None
     if can_see_cost(user):
         out["stock_value"] = f(D(p["purchase_rate"]) * qty)
     else:

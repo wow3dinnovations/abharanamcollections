@@ -1,0 +1,15 @@
+**/node_modules
+**/.venv
+**/__pycache__
+frontend/dist
+backend/.env
+backend/tests
+data
+uploads
+backups
+exports
+invoices
+barcode_labels
+logs
+assets/logo
+cloud
