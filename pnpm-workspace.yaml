@@ -1,0 +1,12 @@
+packages:
+  - "apps/web"
+  - "apps/mobile"
+  - "packages/*"
+onlyBuiltDependencies:
+  - supabase
+  - sharp
+  - esbuild
+  - workerd
+overrides:
+  # One copy of the React types, so the web and mobile JSX types never clash.
+  "@types/react": 19.3.0

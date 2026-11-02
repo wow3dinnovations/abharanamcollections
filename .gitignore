@@ -1,0 +1,26 @@
+node_modules/
+.next/
+dist/
+.turbo/
+.expo/
+*.log
+.env
+.env.local
+.env.*.local
+supabase/.temp/
+supabase/.branches/
+.DS_Store
+*.tsbuildinfo
+next-env.d.ts
+
+# Cloudflare build output
+.open-next/
+.wrangler/
+.dev.vars*
+
+# Shop software (apps/shop-admin): real business data stays on the shop computer, never in git
+apps/shop-admin/backend/.venv/
+apps/shop-admin/backend/.env
+__pycache__/
+.pytest_cache/
+apps/shop-admin/frontend/dist/

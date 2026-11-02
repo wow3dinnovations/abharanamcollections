@@ -1,0 +1,52 @@
+# secrets / environment
+.env
+backend/.env
+*.pem
+
+# python
+backend/.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# node
+frontend/node_modules/
+frontend/dist/
+
+# REAL business data - never commit
+data/*.json
+data/.*
+data/*.tmp*
+data/*.pre-txn
+backups/*
+uploads/products/*
+uploads/expenses/*
+uploads/imports/*
+invoices/*
+barcode_labels/*
+exports/*
+logs/*
+
+# keep the empty folders in git
+!data/.gitkeep
+!backups/.gitkeep
+!uploads/products/.gitkeep
+!uploads/expenses/.gitkeep
+!uploads/imports/.gitkeep
+!invoices/.gitkeep
+!barcode_labels/.gitkeep
+!exports/.gitkeep
+!logs/.gitkeep
+
+# never allow any SQL database file
+*.db
+*.sqlite
+*.sqlite3
+
+# OS / editor / temp
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+.vscode/

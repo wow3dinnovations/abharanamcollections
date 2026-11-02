@@ -1,0 +1,21 @@
+{
+  "name": "abharanam",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "db:start": "supabase start -x imgproxy,edge-runtime,logflare,vector,supavisor,realtime",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:types": "supabase gen types typescript --local > packages/db/src/database.types.ts"
+  },
+  "devDependencies": {
+    "supabase": "^2.0.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.6.0"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "Abharanam",
+    "slug": "abharanam-1gram",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.abharanamcollections.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#3D0F1A",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.abharanamcollections.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      "expo-sqlite",
+      "expo-image"
+    ],
+    "scheme": "abharanam"
+  }
+}
