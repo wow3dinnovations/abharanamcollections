@@ -64,7 +64,7 @@ cd apps/shop-admin/backend && python -m pytest -q   # shop software (155 tests, 
 
 ## Going live
 
-Step by step (Supabase project, Cloudflare, connecting the shop software, Android build): [docs/GO-LIVE.md](docs/GO-LIVE.md).
+Test everything on your PC first: [docs/LOCAL-TESTING.md](docs/LOCAL-TESTING.md). Then step by step (Supabase project, Cloudflare, connecting the shop software, Android build): [docs/GO-LIVE.md](docs/GO-LIVE.md).
 
 ## Changing the database
 

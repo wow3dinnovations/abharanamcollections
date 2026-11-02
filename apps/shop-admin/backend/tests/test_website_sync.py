@@ -144,3 +144,13 @@ def test_staff_need_publish_permission(admin, make_staff, site):
     assert staff.post("/api/website/publish", json={}).status_code == 403
     allowed = make_staff(["website.publish"])
     assert allowed.get("/api/website/status").status_code == 200
+
+
+def test_switching_website_resends_everything(admin, site, monkeypatch):
+    cat, vendor, loc = basic_setup(admin)
+    make_product(admin, cat, vendor, loc)
+    assert ok(admin.post("/api/website/publish", json={}))["products_sent"] == 1
+    assert ok(admin.post("/api/website/publish", json={}))["products_sent"] == 0
+    monkeypatch.setenv("WEBSITE_SUPABASE_URL", "https://live.supabase.co")
+    assert ok(admin.get("/api/website/status"))["never_published"] == 1
+    assert ok(admin.post("/api/website/publish", json={}))["products_sent"] == 1

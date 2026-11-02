@@ -195,7 +195,7 @@ def status(ctx: AppContext) -> dict:
     cfg = load_config()
     st = ctx.store.doc(STATE) or {}
     products = [p for p in ctx.store.all("products") if p.get("status") != "deleted"]
-    synced = st.get("products") or {}
+    synced = (st.get("products") or {}) if st.get("target") == cfg.url else {}
     pending = sum(1 for p in products if p["id"] not in synced)
     return {
         "configured": cfg.configured,
@@ -243,7 +243,9 @@ def run_sync(ctx: AppContext, *, force: bool = False, client_factory: ClientFact
 def _publish(ctx: AppContext, client: httpx.Client, force: bool) -> dict:
     store = ctx.store
     st = store.doc(STATE) or {}
-    old_products: dict[str, dict] = dict(st.get("products") or {})
+    target = str(client.base_url).rstrip("/")
+    # Fingerprints are per website. Switching from the local test database to the live one sends everything again.
+    old_products: dict[str, dict] = dict(st.get("products") or {}) if st.get("target") == target else {}
 
     # 1. Categories and sub-categories (few, always sent so names and on/off stay right).
     cats = store.all("categories")
@@ -303,7 +305,7 @@ def _publish(ctx: AppContext, client: httpx.Client, force: bool) -> dict:
     with store.transaction() as tx:
         doc = tx.doc(STATE)
         doc.clear()
-        doc.update({"products": new_state, "last_success": finished, "last_result": result,
+        doc.update({"target": target, "products": new_state, "last_success": finished, "last_result": result,
                     "last_error": None, "last_error_at": None})
     return result
 
