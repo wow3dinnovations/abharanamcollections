@@ -12,13 +12,32 @@ interface Form {
   design_number: string; size: string; colour: string; material: string; collection: string; tags: string
   vendor_id: string; purchase_location_id: string; purchase_date: string; purchase_invoice_no: string
   purchase_rate: string; selling_price: string; discount_allowed_percent: string; min_selling_price: string
-  initial_quantity: string; rack: string; status: string
+  initial_quantity: string; rack: string; status: string; price_rate: string
 }
 const blank: Form = {
   name: '', category_id: '', subcategory_id: '', sku: '', barcode: '', description: '', design_number: '', size: '', colour: '',
   material: '', collection: '', tags: '', vendor_id: '', purchase_location_id: '', purchase_date: todayIso(), purchase_invoice_no: '',
-  purchase_rate: '', selling_price: '', discount_allowed_percent: '', min_selling_price: '', initial_quantity: '', rack: '', status: 'active',
+  purchase_rate: '', selling_price: '', discount_allowed_percent: '', min_selling_price: '', initial_quantity: '', rack: '', status: 'active', price_rate: '',
 }
+
+// Vendor, location, invoice no. and price rate stay filled in ("frozen") until changed, because products are
+// usually entered one vendor bill at a time.
+const STICKY_KEY = 'abh.addProduct.sticky'
+const STICKY = ['vendor_id', 'purchase_location_id', 'purchase_invoice_no', 'price_rate'] as const
+function loadSticky(): Partial<Form> {
+  try { return JSON.parse(localStorage.getItem(STICKY_KEY) || '{}') as Partial<Form> } catch { return {} }
+}
+function saveSticky(f: Form) {
+  try { localStorage.setItem(STICKY_KEY, JSON.stringify(Object.fromEntries(STICKY.map((k) => [k, f[k]])))) } catch { /* ignore */ }
+}
+const roundPrice = (n: number) => Math.round(n * 100) / 100
+function autoPrice(rate: string, mult: string): string | null {
+  const r = Number(rate), m = Number(mult)
+  if (rate.trim() === '' || mult.trim() === '' || !isFinite(r) || !isFinite(m) || m <= 0) return null
+  return String(roundPrice(r * m))
+}
+
+interface NextCode { sku: string; based_on: string; match: string }
 
 export function ProductFormPage() {
   const { id } = useParams()
@@ -27,7 +46,12 @@ export function ProductFormPage() {
   const { toast } = useToast()
   const { can } = useAuth()
   const { categories, subcategories, vendors, locations, loaded } = useLookups()
-  const [f, setF] = useState<Form>(blank)
+  const [f, setF] = useState<Form>(() => (editing ? blank : { ...blank, ...loadSticky() }))
+  const [skuAuto, setSkuAuto] = useState(!editing)
+  const [suggested, setSuggested] = useState<NextCode | null>(null)
+  const [codeTick, setCodeTick] = useState(0)
+  const nameRef = useRef<HTMLInputElement>(null)
+  const mayAdd = can('inventory.add_product')
   const [loading, setLoading] = useState(editing)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
@@ -52,15 +76,43 @@ export function ProductFormPage() {
     }).catch((e) => setErr(e instanceof ApiError ? e.message : 'Cannot load product')).finally(() => setLoading(false))
   }, [id])
 
+  // Suggest the next product code from the last product with the same category, vendor and location.
+  useEffect(() => {
+    if (editing || !mayAdd) return
+    if (!f.category_id) { setSuggested(null); return }
+    let live = true
+    const q = new URLSearchParams({ category_id: f.category_id, vendor_id: f.vendor_id, location_id: f.purchase_location_id })
+    api.get<NextCode>(`/api/products/next-code?${q}`).then((r) => { if (live) setSuggested(r) }).catch(() => { if (live) setSuggested(null) })
+    return () => { live = false }
+  }, [editing, f.category_id, f.vendor_id, f.purchase_location_id, codeTick, mayAdd])
+
+  useEffect(() => {
+    if (skuAuto && !editing) setF((cur) => ({ ...cur, sku: suggested?.sku ?? '' }))
+  }, [suggested, skuAuto, editing])
+
   if (loading || !loaded) return <PageLoader />
   const set = (patch: Partial<Form>) => setF({ ...f, ...patch })
+  // Purchase rate x price rate = selling price (typing a selling price yourself still works).
+  const setPricing = (patch: Partial<Form>) => {
+    const next = { ...f, ...patch }
+    const price = autoPrice(next.purchase_rate, next.price_rate)
+    setF(price === null ? next : { ...next, selling_price: price })
+  }
   const catCode = categories.find((c) => c.id === f.category_id)?.code
   const qty = Number(f.initial_quantity) || 0
   const total = qty * (Number(f.purchase_rate) || 0)
   const subs = subcategories.filter((s) => s.category_id === f.category_id && s.active)
   const num = (s: string) => (s.trim() === '' ? null : Number(s))
+  const skuHint = suggested?.sku
+    ? (skuAuto ? `Next after ${suggested.based_on}${suggested.match === 'category_location' ? ' (same category & location; first product from this vendor)' : ' (same category, vendor & location)'}. You can type a different code.` : 'Typed by you.')
+    : `Leave blank to auto-create${catCode ? ` (e.g. ABH-${catCode}-000001)` : ''}.`
+  const auto = autoPrice(f.purchase_rate, f.price_rate)
+  const priceHint = auto !== null
+    ? (auto === f.selling_price ? `${money(Number(f.purchase_rate))} × ${f.price_rate} = ${money(Number(auto))}` : `Suggested ${money(Number(auto))}; you typed your own price.`)
+    : 'Selling price = purchase rate × this'
 
-  const save = async () => {
+
+  const save = async (addNext = false) => {
     setBusy(true); setErr('')
     try {
       const common = {
@@ -81,6 +133,18 @@ export function ProductFormPage() {
         const form = new FormData(); form.append('file', file)
         try { await api.upload(`/api/products/${pid}/image`, form) } catch (e) { toast(`Product saved, but the picture failed: ${e instanceof ApiError ? e.message : ''}`, 'error') }
       }
+      if (!editing) saveSticky(f)
+      if (addNext) {
+        toast(f.sku ? `Product ${f.sku} added. Ready for the next one.` : 'Product added. Ready for the next one.')
+        // Keep category, vendor, location, date, invoice and price rate; clear the rest.
+        setF({ ...blank, category_id: f.category_id, subcategory_id: f.subcategory_id, vendor_id: f.vendor_id,
+          purchase_location_id: f.purchase_location_id, purchase_date: f.purchase_date, purchase_invoice_no: f.purchase_invoice_no,
+          price_rate: f.price_rate, rack: f.rack })
+        setFile(null); setPreview(null); if (fileRef.current) fileRef.current.value = ''
+        setSkuAuto(true); setCodeTick((t) => t + 1)
+        window.scrollTo({ top: 0 }); setTimeout(() => nameRef.current?.focus(), 0)
+        return
+      }
       toast(editing ? 'Product updated.' : 'Product added.')
       nav(`/inventory/products/${pid}`)
     } catch (e) { setErr(e instanceof ApiError ? e.message : 'Could not save.') } finally { setBusy(false) }
@@ -94,14 +158,19 @@ export function ProductFormPage() {
           <Card>
             <h2 className="mb-3 font-display text-xl font-semibold text-maroon-800">Product information</h2>
             <div className="grid gap-3 md:grid-cols-2">
-              <Field label="Product name" required className="md:col-span-2"><Input value={f.name} onChange={(e) => set({ name: e.target.value })} placeholder="e.g. Gold Finish Jhumka" autoFocus /></Field>
+              <Field label="Product name" required className="md:col-span-2"><Input ref={nameRef} value={f.name} onChange={(e) => set({ name: e.target.value })} placeholder="e.g. Gold Finish Jhumka" autoFocus /></Field>
               <Field label="Category" required>
                 <Select value={f.category_id} onChange={(e) => set({ category_id: e.target.value, subcategory_id: '' })}>
                   <option value="">Choose…</option>{categories.filter((c) => c.active || c.id === f.category_id).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </Select>
               </Field>
               <Field label="Sub-category"><Select value={f.subcategory_id} onChange={(e) => set({ subcategory_id: e.target.value })}><option value="">—</option>{subs.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</Select></Field>
-              <Field label="SKU / Product code" hint={editing ? 'Changing the SKU means labels must be re-printed.' : `Leave blank to auto-create${catCode ? ` (e.g. ABH-${catCode}-000001)` : ''}.`}><Input value={f.sku} onChange={(e) => set({ sku: e.target.value.toUpperCase() })} /></Field>
+              <Field label="SKU / Product code" hint={editing ? 'Changing the SKU means labels must be re-printed.' : skuHint}>
+                <Input value={f.sku} onChange={(e) => { setSkuAuto(false); set({ sku: e.target.value.toUpperCase() }) }} />
+                {!editing && !skuAuto && suggested?.sku && suggested.sku !== f.sku && (
+                  <button type="button" className="mt-1 text-xs font-medium text-maroon-700 underline" onClick={() => setSkuAuto(true)}>Use next code {suggested.sku}</button>
+                )}
+              </Field>
               <Field label="Barcode" hint="Leave blank to use the SKU as the barcode."><Input value={f.barcode} onChange={(e) => set({ barcode: e.target.value.toUpperCase() })} /></Field>
               <Field label="Design number"><Input value={f.design_number} onChange={(e) => set({ design_number: e.target.value })} /></Field>
               <Field label="Collection"><Input value={f.collection} onChange={(e) => set({ collection: e.target.value })} placeholder="Bridal, Festive, Daily wear…" /></Field>
@@ -117,13 +186,13 @@ export function ProductFormPage() {
             <h2 className="mb-3 font-display text-xl font-semibold text-maroon-800">Purchase & stock</h2>
             {!canSeeCost && editing && <Notice>Purchase details are hidden for your login.</Notice>}
             <div className="grid gap-3 md:grid-cols-3">
-              <Field label="Vendor"><Select value={f.vendor_id} onChange={(e) => set({ vendor_id: e.target.value })}><option value="">—</option>{vendors.filter((v) => v.active || v.id === f.vendor_id).map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</Select></Field>
-              {(canSeeCost || !editing) && <Field label="Purchase rate (₹, each)"><Input type="number" min="0" step="0.01" value={f.purchase_rate} onChange={(e) => set({ purchase_rate: e.target.value })} /></Field>}
+              <Field label="Vendor" hint={!editing && f.vendor_id ? 'Stays selected for the next product' : undefined}><Select value={f.vendor_id} onChange={(e) => set({ vendor_id: e.target.value })}><option value="">—</option>{vendors.filter((v) => v.active || v.id === f.vendor_id).map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</Select></Field>
+              {(canSeeCost || !editing) && <Field label="Purchase rate (₹, each)"><Input type="number" min="0" step="0.01" value={f.purchase_rate} onChange={(e) => setPricing({ purchase_rate: e.target.value })} /></Field>}
               <Field label="Purchase invoice no."><Input value={f.purchase_invoice_no} onChange={(e) => set({ purchase_invoice_no: e.target.value })} /></Field>
               {!editing && (
                 <>
                   <Field label="Quantity" hint="Pieces you are adding now"><Input type="number" min="0" step="1" value={f.initial_quantity} onChange={(e) => set({ initial_quantity: e.target.value })} /></Field>
-                  <Field label="Location" required={qty > 0}><Select value={f.purchase_location_id} onChange={(e) => set({ purchase_location_id: e.target.value })}><option value="">Choose…</option>{locations.filter((l) => l.active).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</Select></Field>
+                  <Field label="Location" required={qty > 0} hint={f.purchase_location_id ? 'Stays selected for the next product' : undefined}><Select value={f.purchase_location_id} onChange={(e) => set({ purchase_location_id: e.target.value })}><option value="">Choose…</option>{locations.filter((l) => l.active).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</Select></Field>
                   <Field label="Purchase date"><Input type="date" value={f.purchase_date} onChange={(e) => set({ purchase_date: e.target.value })} /></Field>
                 </>
               )}
@@ -136,6 +205,11 @@ export function ProductFormPage() {
           <Card>
             <h2 className="mb-3 font-display text-xl font-semibold text-maroon-800">Selling</h2>
             <div className="grid gap-3 md:grid-cols-3">
+              {(canSeeCost || !editing) && (
+                <Field label="Price rate (×)" hint={priceHint}>
+                  <Input type="number" min="0" step="0.01" value={f.price_rate} placeholder="e.g. 2.5" onChange={(e) => setPricing({ price_rate: e.target.value })} />
+                </Field>
+              )}
               <Field label="Selling price (₹)" required><Input type="number" min="0" step="0.01" value={f.selling_price} onChange={(e) => set({ selling_price: e.target.value })} /></Field>
               <Field label="Discount allowed (%)" hint="Optional maximum"><Input type="number" min="0" max="100" value={f.discount_allowed_percent} onChange={(e) => set({ discount_allowed_percent: e.target.value })} /></Field>
               {(canSeeCost || !editing) && <Field label="Minimum selling price (₹)" hint="Optional"><Input type="number" min="0" step="0.01" value={f.min_selling_price} onChange={(e) => set({ min_selling_price: e.target.value })} /></Field>}
@@ -155,10 +229,21 @@ export function ProductFormPage() {
             <p className="mt-2 text-xs text-ink/50">JPG, PNG or WEBP, up to 6 MB. Stored on this computer.</p>
           </Card>
           <ErrorBox message={err} />
-          <div className="flex gap-2">
-            <Button variant="gold" size="lg" className="flex-1" loading={busy} disabled={!can(editing ? 'inventory.edit_product' : 'inventory.add_product')} onClick={save}>{editing ? 'Save changes' : 'Save product'}</Button>
-            <Button variant="outline" size="lg" onClick={() => nav(-1)}>Cancel</Button>
-          </div>
+          {editing ? (
+            <div className="flex gap-2">
+              <Button variant="gold" size="lg" className="flex-1" loading={busy} disabled={!can('inventory.edit_product')} onClick={() => save()}>Save changes</Button>
+              <Button variant="outline" size="lg" onClick={() => nav(-1)}>Cancel</Button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Button variant="gold" size="lg" className="w-full" loading={busy} disabled={!can('inventory.add_product')} onClick={() => save(true)}>Save &amp; add next</Button>
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" disabled={busy || !can('inventory.add_product')} onClick={() => save()}>Save &amp; open</Button>
+                <Button variant="outline" onClick={() => nav(-1)}>Cancel</Button>
+              </div>
+              <p className="text-xs text-ink/50">“Save &amp; add next” keeps the category, vendor, location, invoice and price rate, and fills in the next product code.</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

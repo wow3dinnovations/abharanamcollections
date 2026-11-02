@@ -173,6 +173,42 @@ def _next_short_barcode(ctx: AppContext, tx, codes: dict, taken: set[str]) -> st
     raise Conflict("Could not generate a free barcode.")  # pragma: no cover
 
 
+_LAST_NUMBER = re.compile(r"(\d+)(?!.*\d)")
+
+
+def _bump(code: str) -> str:
+    """IB4501 -> IB4502, IH615-LOT009 -> IH615-LOT010 (keeps leading zeros); no digits -> add 1."""
+    m = _LAST_NUMBER.search(code)
+    if not m:
+        return f"{code}1"
+    digits = m.group(1)
+    return f"{code[:m.start()]}{str(int(digits) + 1).zfill(len(digits))}{code[m.end():]}"
+
+
+def suggest_code(ctx: AppContext, category_id: str, vendor_id: str = "", location_id: str = "") -> dict:
+    """The next product code for this category + vendor + location, following the last product added with the
+    same three.  If there is none, it follows the last one with the same category + location.  Empty sku when
+    nothing matches (then the shop's automatic ABH-CAT-###### code is used)."""
+    if not category_id:
+        return {"sku": "", "based_on": "", "match": ""}
+    rows = [p for p in ctx.store.all("products") if p["status"] != "deleted" and p["category_id"] == category_id
+            and (p.get("purchase_location_id") or "") == (location_id or "")]
+    exact = [p for p in rows if (p.get("vendor_id") or "") == (vendor_id or "")]
+    pool, match = (exact, "category_vendor_location") if exact else (rows, "category_location")
+    if not pool:
+        return {"sku": "", "based_on": "", "match": ""}
+    last = max(pool, key=lambda p: (p.get("date_added", ""), p["id"]))
+    codes = code_index(ctx)
+    candidate = last["sku"]
+    for _ in range(10000):
+        candidate = _bump(candidate)
+        if len(candidate) > 40 or not SKU_RE.match(candidate):
+            return {"sku": "", "based_on": last["sku"], "match": match}
+        if candidate not in codes:
+            return {"sku": candidate, "based_on": last["sku"], "match": match}
+    return {"sku": "", "based_on": last["sku"], "match": match}  # pragma: no cover
+
+
 def build_product(ctx: AppContext, tx, user: dict, data: dict, taken_codes: set[str] | None = None) -> tuple[dict, int]:
     """Validate and build a NEW product record (not yet saved).  Returns (product, opening_quantity)."""
     name = _text(data, "name", 150)

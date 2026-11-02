@@ -34,6 +34,12 @@ def lookup(code: str, user: dict = Depends(require(*VIEW)), ctx: AppContext = De
     return product_service.present(ctx, p, user)
 
 
+@router.get("/next-code")
+def next_code(category_id: str = "", vendor_id: str = "", location_id: str = "",
+              user: dict = Depends(require("inventory.add_product")), ctx: AppContext = Depends(get_ctx)):
+    return product_service.suggest_code(ctx, category_id, vendor_id, location_id)
+
+
 @router.post("")
 def create(body: ProductIn, user: dict = Depends(require("inventory.add_product")), ctx: AppContext = Depends(get_ctx)):
     return product_service.create_product(ctx, user, body.model_dump())
