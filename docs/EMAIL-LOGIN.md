@@ -16,7 +16,8 @@ dashboard of the `abharanam` project.
 ## 2. Website address
 
 **Authentication → URL Configuration**
-- **Site URL**: `https://1gram.abharanamcollections.com`
+- **Site URL**: `https://1gram.abharanamcollections.com` (the address customers use; the login link in the email
+  is built from it. While the custom domain isn't connected yet, use the `….workers.dev` address instead.)
 - **Redirect URLs → Add URL**: `https://1gram.abharanamcollections.com/**`
   (while testing also `https://abharanamcollections.wow3dinnovations.workers.dev/**`)
 
@@ -26,7 +27,9 @@ dashboard of the `abharanam` project.
 (new customers get "Confirm signup" the first time):
 - **Subject**: `Your Abharanam login code`
 - **Body**: delete what is there and paste the whole file `supabase/templates/magic_link.html` from this
-  repository. It must contain `{{ .Token }}`: that is where the code appears.
+  repository. It must contain `{{ .Token }}` (the code) and a link to `{{ .SiteURL }}/auth/confirm?token_hash=...`.
+  That link works in any browser or email app. The default Supabase text (`{{ .ConfirmationURL }}`) only works
+  in the browser where the code was asked for, so clicking it in the Gmail app lands on the login page again.
 - Save.
 
 ## 4. Send the emails through your Gmail (reliable, free)
