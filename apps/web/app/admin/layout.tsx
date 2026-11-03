@@ -25,12 +25,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             {n.label}
           </Link>
         ))}
-        {/* A plain <a>: the shop software is a separate app at /shop-admin, not a page of this site. */}
-        <a href="/shop-admin/" className="shrink-0 rounded px-3 py-2 text-sm font-medium text-maroon hover:bg-cream">
-          Shop software ↗
-        </a>
+        <Link href="/shop-admin" className="shrink-0 rounded px-3 py-2 text-sm font-medium text-maroon hover:bg-cream">
+          Shop software
+        </Link>
         <p className="mt-4 hidden px-3 text-xs text-muted md:block">
-          Products, prices, stock and print tags are managed in the shop software, then published here.
+          Add products, prices, stock, tags and bills in the shop software. They show here straight away.
         </p>
       </aside>
       <div className="min-w-0">{children}</div>

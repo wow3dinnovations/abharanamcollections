@@ -2,16 +2,10 @@ name: Deploy shop software
 # Puts the shop software online at 1gram.abharanamcollections.com/shop-admin (Cloudflare Worker + Container).
 # Needs two repository secrets (Settings -> Secrets and variables -> Actions), see docs/GO-LIVE.md:
 #   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
+# Not used any more: the shop software now runs free inside the website (apps/web/app/shop-admin).
+# Kept only as a manual option. Running it would put the old paid version (Workers Paid plan) in front of the
+# website's /shop-admin pages, so don't run it unless you really want the old version back.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "apps/shop-admin/backend/app/**"
-      - "apps/shop-admin/backend/requirements.txt"
-      - "apps/shop-admin/frontend/**"
-      - "apps/shop-admin/cloud/**"
-      - "apps/shop-admin/Dockerfile"
-      - ".github/workflows/deploy-shop.yml"
   workflow_dispatch:
 
 concurrency:

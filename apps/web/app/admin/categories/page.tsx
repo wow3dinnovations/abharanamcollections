@@ -9,7 +9,7 @@ export default async function AdminCategories() {
   return (
     <div>
       <PageHeader title="Categories" />
-      <p className="mb-4 text-sm text-muted">Categories are created in the shop software. Here you choose the order, a cover photo and a short description for the website.</p>
+      <p className="mb-4 text-sm text-muted">Categories are added and named in the shop software (Vendors &amp; settings). Here you choose the order, a cover photo and a short description for the website.</p>
       <Table head={["Photo", "Category", "Order / description / photo", "On website"]}>
         {(data ?? []).map((c) => (
           <tr key={c.id}>

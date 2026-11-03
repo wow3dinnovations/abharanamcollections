@@ -10,7 +10,7 @@ from the 3D store.
 | 1gram.abharanamcollections.com | Website + admin (`apps/web`) | Cloudflare Workers (free to start) |
 | Database, logins, photos | Supabase project `abharanam` (Mumbai) | Supabase (free to start) |
 | Android app `com.abharanamcollections.app` | `apps/mobile` | Expo EAS → Google Play |
-| 1gram.abharanamcollections.com/shop-admin | Shop software (`apps/shop-admin`), **only for you** | Cloudflare Container behind Cloudflare Access ($5/month Workers Paid plan) |
+| 1gram.abharanamcollections.com/shop-admin | Shop software, **only for admins** (part of `apps/web`) | Same Worker and Supabase as the website (free) |
 
 Do the steps in order. Each says what you should see when it worked.
 
@@ -23,8 +23,8 @@ Do the steps in order. Each says what you should see when it worked.
    - **Project URL**: `https://<project ref>.supabase.co`.
    - **anon / publishable key**: Project Settings → API Keys (anon public, starts `eyJ`, or Publishable, starts `sb_publishable_`).
      This one is safe for the website and app.
-   - **service_role / Secret key**: same page. **Only** for the shop software (a Cloudflare secret in step 3, and
-     `backend\.env` on the shop computer for the one-time upload). Never put it in the website, app or git.
+   - **service_role / Secret key**: same page. Not needed for the website or the online shop software. Never put
+     it in the website, app or git.
 3. Put the database in. In PowerShell, in the folder where you cloned this repo:
    ```powershell
    git pull
@@ -32,8 +32,8 @@ Do the steps in order. Each says what you should see when it worked.
    npx supabase link --project-ref <your project ref>
    npx supabase db push
    ```
-   You should see `20261102000001_init.sql` and `20261103000001_shop_cloud.sql` applied. **Don't run `seed.sql` on the live database**: it is sample data.
-   Your real products come from the shop software in step 3.
+   You should see `20261102000001_init.sql`, `20261103000001_shop_cloud.sql` and `20261104000001_shop_online.sql` applied. **Don't run `seed.sql` on the live database**: it is sample data.
+   Your real products come from the shop computer in step 3.
 4. **Authentication → URL Configuration**: Site URL `https://1gram.abharanamcollections.com`, and add redirect URL
    `https://1gram.abharanamcollections.com/auth/callback**`.
 5. Login emails with a 6-digit code: follow [EMAIL-LOGIN.md](EMAIL-LOGIN.md) (provider, templates, Gmail SMTP).
@@ -58,70 +58,41 @@ Do the steps in order. Each says what you should see when it worked.
 
 ## 3. Shop software online (1gram.abharanamcollections.com/shop-admin)
 
-The shop software now runs on Cloudflare, so you can use it from any computer or phone. Customers never see it:
-Cloudflare Access only lets your email address through (with a code sent to your email), and then the shop
-software asks for its own username and password as before. Its data (products, stock, purchases, vendors,
-sales, customers, expenses, photos, backups) is kept in the **private** part of your Supabase project, which
-the website and app cannot read.
+The shop software is part of the website, so it is **free** (no Workers Paid plan, no container). Only an
+admin (step 2.7) can open it; customers and visitors get "page not found", and search engines are told to
+skip it. Purchase rates, vendors, locations, stock per location and bills are in tables that only an admin
+can read.
 
-**3.1 Workers Paid plan.** Cloudflare → **Workers & Pages → Plans** → **Workers Paid** ($5/month). Containers
-need it. The included usage covers a shop open all day; the software sleeps after 30 minutes without use and
-wakes in a few seconds.
+1. Put the shop tables in the database (PowerShell, in the repo folder):
+   ```powershell
+   git pull
+   npx supabase db push
+   ```
+   You should see `20261104000001_shop_online.sql` applied.
+2. Log in on the website, click **Admin → Shop software** (or open `/shop-admin`). You should see the
+   dashboard.
+3. Bring in the shop computer's data: **Import shop data**.
+   - Data files: in `C:\1GRAM GOLD\Abharanam\data` choose `products.json`, `categories.json`,
+     `subcategories.json`, `vendors.json` and `locations.json` together.
+   - Photos: in `C:\1GRAM GOLD\Abharanam\uploads\products` select all photos (Ctrl+A). They are matched by
+     file name (`IB21041.jpg` → product IB21041) and shrunk for the web.
+   - Click **Import**. It is safe to run again: products are updated, not doubled, and the stock numbers from
+     the files replace the stock online.
+4. **Vendors & settings**: check the location and vendor names, the category codes, the price multiplier
+   (selling price = purchase rate × multiplier) and the tag size (18 × 12 mm for the Udyama UDY 420B).
+5. **Stop the shop computer publishing to the website**, so there is only one place where products are
+   changed: in `C:\1GRAM GOLD\Abharanam\backend\.env` delete the lines starting with `WEBSITE_` and
+   restart the shop software. From now on add products, print tags and make bills at `/shop-admin`.
 
-**3.2 Cloudflare Access (who may open it).**
-1. Cloudflare → **Zero Trust** (left menu). First time: choose a team name, e.g. `abharanam`, and the **Free** plan.
-   Your team domain is then `abharanam.cloudflareaccess.com`.
-2. **Access → Applications → Add an application → Self-hosted**.
-   - Name `Shop software`, session duration `1 week`.
-   - Public hostname: subdomain `1gram`, domain `abharanamcollections.com`, path `shop-admin`.
-   - Policy: name `Owner`, action **Allow**, include **Emails** → your email (add staff emails here later).
-   - Login method: **One-time PIN**. Save.
-3. Open the application again → **Overview**: copy the **Application Audience (AUD) Tag**.
+What is where:
 
-**3.3 Let GitHub deploy it.**
-1. Cloudflare → **My Profile → API Tokens → Create Token** → template **Edit Cloudflare Workers** → add two
-   permissions: **Account › Containers › Edit** and **Account › Cloudchamber › Edit** → Account: yours,
-   Zone: `abharanamcollections.com` → Create. Copy the token.
-2. Your **Account ID**: Cloudflare home → your account → right side, **Account ID**.
-3. GitHub → this repository → **Settings → Secrets and variables → Actions → New repository secret**:
-   `CLOUDFLARE_API_TOKEN` = the token, `CLOUDFLARE_ACCOUNT_ID` = the account id.
-4. GitHub → **Actions → Deploy shop software → Run workflow**. It takes about 5 minutes. After this, every push
-   that changes the shop software redeploys it.
-
-**3.4 Secrets for the shop software.** Cloudflare → **Workers & Pages → abharanam-shop-admin → Settings →
-Variables and Secrets → Add** (type **Secret**) each of:
-
-| Name | Value |
+| Page | What you do there |
 |---|---|
-| `WEBSITE_SUPABASE_URL` | `https://<project ref>.supabase.co` |
-| `WEBSITE_SUPABASE_SERVICE_KEY` | the service_role / Secret key |
-| `ACCESS_TEAM_DOMAIN` | `abharanam.cloudflareaccess.com` (your team domain) |
-| `ACCESS_AUD` | the AUD tag from 3.2 |
-
-Until `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD` are set, the page says "Not switched on yet" to everyone.
-
-**3.5 Bring your existing data (once).** On the shop computer:
-1. Close the shop software. Copy the new files from this repo's `apps/shop-admin` over your shop software folder
-   (your `data`, `uploads` and `assets\logo` folders are not touched), then run `scripts\setup.bat` once.
-2. Open `backend\.env` in Notepad and add:
-   ```
-   WEBSITE_SUPABASE_URL=https://<project ref>.supabase.co
-   WEBSITE_SUPABASE_SERVICE_KEY=<service_role / Secret key>
-   ```
-3. Double-click `scripts\upload-to-cloud.bat`. It shows how many products, sales and customers it found, uploads
-   them with all photos, the logo and backups, and says **Done**. Your local data is only read, not changed.
-
-**3.6 Use it.**
-1. Open `https://1gram.abharanamcollections.com/shop-admin` → enter your email → type the code from the email →
-   log in with your usual shop software username and password.
-2. **Administration → Website & App → Publish now**: you should see "Published … products". Open the website: all
-   categories and products are there. While the shop software is open it publishes changes every 5 minutes.
-3. From now on use **only the online one**. Don't keep working in the copy on the shop computer as well: the two
-   don't merge. Keep the shop computer copy as it is, as a fallback.
-4. Barcode tags: open the online page on the computer that has the label printer and print as before (the
-   browser prints them, same as today).
-5. Backups: the software still makes its own backup every 12 hours (the last 14 are kept online), and
-   the **Export all data (zip)** button downloads everything as one file. Download one now and then and keep it safe.
+| Add product | Code is filled in automatically (next code for the same category + vendor + location); vendor, location and category stay selected; selling price = purchase rate × multiplier. **Save & add next** for the next piece. |
+| Print tags | Tick products in **Products** (or scan codes), choose how many tags, **Print**. In the print window pick the tag printer, paper 18 × 12 mm, scale 100%, no margins. |
+| Stock | Type the counted quantity per location and press Set. Every change is kept in the history. |
+| Billing | Scan tags, add discount, **Save & print bill**. Stock goes down at that shop; cancelling a bill puts it back. |
+| Bills | All bills by date, with totals. |
 
 ## 4. Android app
 
@@ -154,7 +125,6 @@ button to `https://1gram.abharanamcollections.com` once the site is live.
 ## After launch
 
 - Website changes: merge to `main`; Cloudflare redeploys.
-- Shop software changes: merge to `main`; the **Deploy shop software** GitHub action redeploys it (it restarts,
-  so finish any open bill first).
+- Shop software changes: they are part of the website, so the same Cloudflare redeploy updates them.
 - Database changes: `npx supabase db push` after the migration is merged.
 - App changes: new production build and upload (step 4.4–4.5).

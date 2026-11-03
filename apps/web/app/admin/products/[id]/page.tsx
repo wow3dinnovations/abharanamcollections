@@ -28,7 +28,7 @@ export default async function AdminProduct({ params }: { params: Promise<{ id: s
             <dt className="text-muted">Colour</dt><dd>{p.colour || "–"}</dd>
             <dt className="text-muted">Description</dt><dd className="whitespace-pre-line">{p.description || "–"}</dd>
           </dl>
-          <p className="mt-3 text-xs text-muted">Change these in the shop software (Inventory → product → Edit). They are published here automatically.</p>
+          <p className="mt-3 text-xs text-muted">Change these in the <Link href={`/shop-admin/products/${p.id}`} className="underline">shop software</Link>.</p>
         </Card>
         <Card title="Website only">
           <form action={saveWebDetails} className="space-y-3">
