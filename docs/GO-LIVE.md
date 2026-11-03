@@ -44,11 +44,10 @@ Do the steps in order. Each says what you should see when it worked.
 ## 2. Website on Cloudflare
 
 1. Cloudflare → **Workers & Pages** → **Create** → **Import a repository** → `wow3dinnovations/abharanamcollections`.
-2. Settings:
-   - Project name: `abharanam-1gram` (must match `apps/web/wrangler.jsonc`)
+2. Settings (Worker name `abharanamcollections`, the same as `name` in `wrangler.jsonc`):
    - Root directory: leave empty
-   - Build command: `pnpm install --frozen-lockfile && pnpm --filter @abh/web cf:build`
-   - Deploy command: `cd apps/web && npx wrangler deploy`
+   - Build command: leave empty (or `pnpm --filter @abh/web cf:build`)
+   - Deploy command: `npx wrangler deploy`
 3. **Build variables**:
    - `NEXT_PUBLIC_SUPABASE_URL` = Project URL
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = anon / publishable key

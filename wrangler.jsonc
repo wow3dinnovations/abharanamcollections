@@ -1,0 +1,13 @@
+{
+  // Customer website (apps/web) on Cloudflare Workers, worker "abharanamcollections".
+  // Kept at the repository root so Cloudflare's default "npx wrangler deploy" works from the root:
+  // it builds the site first (build.command), then uploads apps/web/.open-next.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "abharanamcollections",
+  "main": "apps/web/.open-next/worker.js",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": { "directory": "apps/web/.open-next/assets", "binding": "ASSETS" },
+  "build": { "command": "pnpm --filter @abh/web cf:build" },
+  "observability": { "enabled": true }
+}
