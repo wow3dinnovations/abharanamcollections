@@ -36,10 +36,7 @@ Do the steps in order. Each says what you should see when it worked.
    Your real products come from the shop software in step 3.
 4. **Authentication → URL Configuration**: Site URL `https://1gram.abharanamcollections.com`, and add redirect URL
    `https://1gram.abharanamcollections.com/auth/callback**`.
-5. **Authentication → Emails → SMTP Settings**: same Resend settings as WOW3D (host `smtp.resend.com`, port `465`,
-   user `resend`, password = your `re_…` key), sender `noreply@abharanamcollections.com`, name `Abharanam Collections`.
-   Then **Templates**: for **Magic Link** and **Confirm signup** set the subject `Your Abharanam login link and code`
-   and paste `supabase/templates/magic_link.html` as the body (the app needs the 6-digit code in it).
+5. Login emails with a 6-digit code: follow [EMAIL-LOGIN.md](EMAIL-LOGIN.md) (provider, templates, Gmail SMTP).
 
 ## 2. Website on Cloudflare
 

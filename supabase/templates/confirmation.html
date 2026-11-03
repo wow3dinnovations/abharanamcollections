@@ -1,4 +1,7 @@
-<h2>Log in to Abharanam Collections</h2>
-<p>On the website, click this link: <a href="{{ .ConfirmationURL }}">Log in</a></p>
-<p>In the app, enter this code: <strong style="font-size:22px;letter-spacing:4px">{{ .Token }}</strong></p>
-<p>The link and code expire in one hour. If you didn't ask to log in, ignore this email.</p>
+<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;color:#3b0d0d">
+  <h2 style="color:#6b1d2a">Your Abharanam Collections login code</h2>
+  <p>Enter this code on the website or in the app:</p>
+  <p style="font-size:32px;font-weight:bold;letter-spacing:8px;margin:16px 0">{{ .Token }}</p>
+  <p>The code expires in one hour. If you didn't ask to log in, you can ignore this email.</p>
+  <p style="font-size:13px;color:#777">On this device you can also <a href="{{ .ConfirmationURL }}">log in with this link</a>.</p>
+</div>

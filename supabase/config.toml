@@ -242,15 +242,15 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
-# Login emails carry both a link (website) and a 6-digit code (mobile app).
+# Login emails carry a 6-digit code (website and app) and a link.
 # On Supabase cloud, paste the same HTML into Authentication > Email Templates.
 [auth.email.template.magic_link]
-subject = "Your WOW3D login link and code"
+subject = "Your Abharanam login code"
 content_path = "./supabase/templates/magic_link.html"
 
 # New accounts get the "confirm signup" email on their first login.
 [auth.email.template.confirmation]
-subject = "Your WOW3D login link and code"
+subject = "Your Abharanam login code"
 content_path = "./supabase/templates/confirmation.html"
 
 # Uncomment to customize email template
