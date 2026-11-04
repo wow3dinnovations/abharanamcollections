@@ -35,6 +35,13 @@
       "expo-sqlite",
       "expo-image"
     ],
-    "scheme": "abharanam"
+    "scheme": "abharanam",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "59cb196f-55e0-403a-b630-cf13a6991413"
+      }
+    },
+    "owner": "wow3dinnovations"
   }
 }
