@@ -96,26 +96,8 @@ What is where:
 
 ## 4. Android app
 
-1. In PowerShell:
-   ```powershell
-   cd apps\mobile
-   npx eas-cli@latest login
-   npx eas-cli@latest init
-   ```
-   `init` adds the project id to `app.json`. Commit and push it (or send it to Claude).
-2. Tell the app where the database is (repeat each with `--environment preview`):
-   ```powershell
-   npx eas-cli@latest env:create --environment production --visibility plaintext --name EXPO_PUBLIC_SUPABASE_URL --value https://<project ref>.supabase.co
-   npx eas-cli@latest env:create --environment production --visibility plaintext --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value <anon key>
-   npx eas-cli@latest env:create --environment production --visibility plaintext --name EXPO_PUBLIC_SITE_URL --value https://1gram.abharanamcollections.com
-   ```
-3. Test build for any Android phone: `npx eas-cli@latest build --profile preview --platform android`, open the
-   link it prints on the phone and install the APK.
-4. Store build: `npx eas-cli@latest build --profile production --platform android` (gives an `.aab`).
-5. Google Play Console: create the app "Abharanam – 1 Gram Gold", privacy policy
-   `https://1gram.abharanamcollections.com/privacy`, account deletion URL `…/delete-account`, fill Data safety
-   (name, phone, email collected for enquiries; not shared), upload the `.aab` to **Closed testing** first.
-   New personal accounts need 12 testers for 14 days before production.
+Follow [ANDROID-RELEASE.md](ANDROID-RELEASE.md): Play developer account, Expo link, test APK on your phone,
+store build, Play Console forms (privacy, data safety, store listing) and the release.
 
 ## 5. Landing page
 
@@ -127,4 +109,4 @@ button to `https://1gram.abharanamcollections.com` once the site is live.
 - Website changes: merge to `main`; Cloudflare redeploys.
 - Shop software changes: they are part of the website, so the same Cloudflare redeploy updates them.
 - Database changes: `npx supabase db push` after the migration is merged.
-- App changes: new production build and upload (step 4.4–4.5).
+- App changes: see "Later: updating the app" in ANDROID-RELEASE.md.
