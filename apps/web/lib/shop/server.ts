@@ -18,7 +18,11 @@ export async function getMasters() {
     subcategories: subs.data ?? [],
     vendors: vendors.data ?? [],
     locations: locations.data ?? [],
-    settings: settings.data ?? { id: 1, default_multiplier: 2, tag_width_mm: 18, tag_height_mm: 12, bill_footer: "", updated_at: "" },
+    settings: settings.data ?? {
+      id: 1, default_multiplier: 2, tag_width_mm: 80, tag_height_mm: 12, bill_footer: "", updated_at: "",
+      code_pattern: "{TYPE}{LOC}{VENDOR}{SERIAL}{G}", code_type: "I", guarantee_letter: "G", guarantee_months: 6,
+      serial_scope: "vendor", next_serial: 1, serial_digits: 0, tag_layout: {},
+    },
   };
 }
 

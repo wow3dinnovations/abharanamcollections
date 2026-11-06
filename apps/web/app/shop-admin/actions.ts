@@ -3,6 +3,7 @@
 import type { Json } from "@abh/db";
 import { revalidatePath } from "next/cache";
 import { bool, check, requireAdmin, str } from "@/lib/admin";
+import { readLayout } from "@/lib/shop/tags";
 
 export type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -18,16 +19,22 @@ function refreshAll() {
 }
 
 // ------------------------------------------------------------------------------------------ products
-export async function suggestCode(category: string, vendor: string, location: string) {
+export type CodeSuggestion = { sku: string; based_on: string; match: string; serial: number | null };
+
+/** Next product code: from the code scheme (IB850G) when the vendor has a number, else following the last code. */
+export async function suggestCode(category: string, vendor: string, location: string, guarantee = false): Promise<CodeSuggestion> {
   const { supabase } = await requireAdmin();
-  if (!category) return { sku: "", based_on: "", match: "" };
-  const { data, error } = await supabase.rpc("shop_next_code", {
-    p_category: category,
+  const none = { sku: "", based_on: "", match: "", serial: null };
+  if (!category && !vendor) return none;
+  const { data, error } = await supabase.rpc("shop_suggest_code", {
+    p_category: category || undefined,
     p_vendor: vendor || undefined,
     p_location: location || undefined,
+    p_guarantee: guarantee,
   });
-  if (error) return { sku: "", based_on: "", match: "" };
-  return data as { sku: string; based_on: string; match: string };
+  if (error || !data) return none;
+  const r = data as { sku?: string; based_on?: string; match?: string; serial?: number | null };
+  return { sku: r.sku ?? "", based_on: r.based_on ?? "", match: r.match ?? "", serial: r.serial ?? null };
 }
 
 export type ProductInput = {
@@ -54,6 +61,10 @@ export type ProductInput = {
   collection: string;
   description: string;
   is_active: boolean;
+  /** Months of manufacturer guarantee (0 = none). Adds the G to scheme codes. */
+  guarantee_months: string;
+  /** The serial number when the code came from the scheme, so the next product gets the next one. */
+  code_serial?: number | null;
 };
 
 export async function saveProduct(input: ProductInput): Promise<Result<{ id: string; sku: string }>> {
@@ -165,7 +176,29 @@ export async function cancelSale(form: FormData) {
 export async function saveVendor(form: FormData) {
   const { supabase } = await requireAdmin();
   const id = str(form, "id");
-  const row = { name: str(form, "name").slice(0, 120), phone: str(form, "phone").slice(0, 40), is_active: id ? bool(form, "is_active") : true };
+  const location_id = str(form, "location_id") || null;
+  const int = (k: string, min: number, max: number) => {
+    const raw = str(form, k);
+    if (raw === "") return null;
+    const n = Number(raw);
+    if (!Number.isInteger(n) || n < min || n > max) throw new Error(`${k === "code_no" ? "Vendor number" : "Next serial"} must be a whole number from ${min} to ${max}.`);
+    return n;
+  };
+  let code_no = int("code_no", 0, 9999);
+  // New vendor in a city: give it the next number there (8 vendors in Bangalore -> the new one is 9).
+  if (!id && code_no === null && location_id) {
+    const { data } = await supabase.rpc("shop_next_vendor_no", { p_location: location_id });
+    code_no = typeof data === "number" ? data : null;
+  }
+  const next_serial = int("next_serial", 0, 999999999);
+  const row = {
+    name: str(form, "name").slice(0, 120),
+    phone: str(form, "phone").slice(0, 40),
+    is_active: id ? bool(form, "is_active") : true,
+    location_id,
+    code_no,
+    ...(next_serial !== null ? { next_serial } : {}),
+  };
   if (!row.name) throw new Error("Enter the vendor's name.");
   check(id ? await supabase.from("shop_vendors").update(row).eq("id", id) : await supabase.from("shop_vendors").insert(row));
   revalidatePath("/shop-admin", "layout");
@@ -174,7 +207,11 @@ export async function saveVendor(form: FormData) {
 export async function saveLocation(form: FormData) {
   const { supabase } = await requireAdmin();
   const id = str(form, "id");
-  const row = { name: str(form, "name").slice(0, 120), is_active: id ? bool(form, "is_active") : true };
+  const row = {
+    name: str(form, "name").slice(0, 120),
+    code: str(form, "code").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4) || null,
+    is_active: id ? bool(form, "is_active") : true,
+  };
   if (!row.name) throw new Error("Enter the location's name.");
   check(id ? await supabase.from("shop_locations").update(row).eq("id", id) : await supabase.from("shop_locations").insert(row));
   revalidatePath("/shop-admin", "layout");
@@ -214,12 +251,50 @@ export async function saveShopSettings(form: FormData) {
   revalidatePath("/shop-admin", "layout");
 }
 
-/** Tag size can also be changed on the print page. */
-export async function saveTagSize(width: number, height: number): Promise<Result> {
+/** How product codes are made, and the shop serial number. */
+export async function saveCodeSettings(form: FormData) {
+  const { supabase } = await requireAdmin();
+  const letters = (k: string) => str(form, k).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
+  const whole = (k: string, label: string, min: number, max: number) => {
+    const n = Number(str(form, k));
+    if (!Number.isInteger(n) || n < min || n > max) throw new Error(`${label} must be a whole number from ${min} to ${max}.`);
+    return n;
+  };
+  const pattern = str(form, "code_pattern").toUpperCase().replace(/\s+/g, "");
+  if (!pattern.includes("{SERIAL}")) throw new Error("The code pattern must have {SERIAL} in it.");
+  if (pattern.length > 60 || /[^A-Z0-9{}_./-]/.test(pattern)) throw new Error("The code pattern can only have letters, numbers, - _ . / and the {PARTS}.");
+  const unknown = (pattern.match(/\{[^}]*\}/g) ?? []).filter((t) => !["{TYPE}", "{LOC}", "{VENDOR}", "{SERIAL}", "{G}"].includes(t));
+  if (unknown.length) throw new Error(`Unknown part ${unknown[0]} in the code pattern.`);
+  check(
+    await supabase
+      .from("shop_settings")
+      .update({
+        code_pattern: pattern,
+        code_type: letters("code_type"),
+        guarantee_letter: letters("guarantee_letter"),
+        guarantee_months: whole("guarantee_months", "Guarantee months", 0, 120),
+        serial_scope: str(form, "serial_scope") === "shop" ? "shop" : "vendor",
+        next_serial: whole("next_serial", "Shop serial number", 0, 999999999),
+        serial_digits: whole("serial_digits", "Serial digits", 0, 9),
+      })
+      .eq("id", 1),
+  );
+  revalidatePath("/shop-admin", "layout");
+}
+
+/** Tag size and layout (positions, offsets, lines) are changed on the print page. */
+export async function saveTagLayout(width: number, height: number, layout: unknown): Promise<Result> {
   try {
     const { supabase } = await requireAdmin();
     if (!(width >= 10 && width <= 120 && height >= 8 && height <= 120)) return { ok: false, error: "Tag size out of range." };
-    check(await supabase.from("shop_settings").update({ tag_width_mm: width, tag_height_mm: height }).eq("id", 1));
+    const clean = readLayout(layout);
+    check(
+      await supabase
+        .from("shop_settings")
+        .update({ tag_width_mm: width, tag_height_mm: height, tag_layout: clean as unknown as Json })
+        .eq("id", 1),
+    );
+    revalidatePath("/shop-admin/tags");
     return { ok: true };
   } catch (e) {
     return fail(e);

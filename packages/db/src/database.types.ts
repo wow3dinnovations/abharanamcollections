@@ -570,6 +570,7 @@ export type Database = {
       };
       shop_locations: {
         Row: {
+          code: string | null;
           created_at: string;
           id: string;
           is_active: boolean;
@@ -578,6 +579,7 @@ export type Database = {
         };
         ComputedFields: never;
         Insert: {
+          code?: string | null;
           created_at?: string;
           id?: string;
           is_active?: boolean;
@@ -585,6 +587,7 @@ export type Database = {
           name: string;
         };
         Update: {
+          code?: string | null;
           created_at?: string;
           id?: string;
           is_active?: boolean;
@@ -595,6 +598,7 @@ export type Database = {
       };
       shop_products: {
         Row: {
+          guarantee_months: number;
           barcode: string | null;
           invoice_no: string;
           location_id: string | null;
@@ -608,6 +612,7 @@ export type Database = {
         };
         ComputedFields: never;
         Insert: {
+          guarantee_months?: number;
           barcode?: string | null;
           invoice_no?: string;
           location_id?: string | null;
@@ -620,6 +625,7 @@ export type Database = {
           vendor_id?: string | null;
         };
         Update: {
+          guarantee_months?: number;
           barcode?: string | null;
           invoice_no?: string;
           location_id?: string | null;
@@ -777,6 +783,14 @@ export type Database = {
       };
       shop_settings: {
         Row: {
+          code_pattern: string;
+          code_type: string;
+          guarantee_letter: string;
+          guarantee_months: number;
+          next_serial: number;
+          serial_digits: number;
+          serial_scope: string;
+          tag_layout: Json;
           bill_footer: string;
           default_multiplier: number;
           id: number;
@@ -786,6 +800,14 @@ export type Database = {
         };
         ComputedFields: never;
         Insert: {
+          code_pattern?: string;
+          code_type?: string;
+          guarantee_letter?: string;
+          guarantee_months?: number;
+          next_serial?: number;
+          serial_digits?: number;
+          serial_scope?: string;
+          tag_layout?: Json;
           bill_footer?: string;
           default_multiplier?: number;
           id?: number;
@@ -794,6 +816,14 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          code_pattern?: string;
+          code_type?: string;
+          guarantee_letter?: string;
+          guarantee_months?: number;
+          next_serial?: number;
+          serial_digits?: number;
+          serial_scope?: string;
+          tag_layout?: Json;
           bill_footer?: string;
           default_multiplier?: number;
           id?: number;
@@ -905,6 +935,9 @@ export type Database = {
       };
       shop_vendors: {
         Row: {
+          code_no: number | null;
+          location_id: string | null;
+          next_serial: number;
           created_at: string;
           id: string;
           is_active: boolean;
@@ -915,6 +948,9 @@ export type Database = {
         };
         ComputedFields: never;
         Insert: {
+          code_no?: number | null;
+          location_id?: string | null;
+          next_serial?: number;
           created_at?: string;
           id?: string;
           is_active?: boolean;
@@ -924,6 +960,9 @@ export type Database = {
           phone?: string;
         };
         Update: {
+          code_no?: number | null;
+          location_id?: string | null;
+          next_serial?: number;
           created_at?: string;
           id?: string;
           is_active?: boolean;
@@ -1125,6 +1164,20 @@ export type Database = {
         ComputedFields: never;
         Relationships: [];
       };
+      shop_stock_age: {
+        Row: {
+          age_days: number | null;
+          id: string | null;
+          is_active: boolean | null;
+          name: string | null;
+          price: number | null;
+          purchase_rate: number | null;
+          since: string | null;
+          sku: string | null;
+          stock_qty: number | null;
+        };
+        Relationships: [];
+      };
     };
     Functions: {
       admin_update_order: {
@@ -1207,6 +1260,20 @@ export type Database = {
         }[];
       };
       shop_store_replace: { Args: { p_cols: Json }; Returns: undefined };
+      shop_next_vendor_no: { Args: { p_location: string }; Returns: number };
+      shop_scheme_code: {
+        Args: { p_guarantee?: boolean; p_location?: string; p_vendor: string };
+        Returns: Json;
+      };
+      shop_scheme_format: {
+        Args: { p_guarantee: boolean; p_location: string; p_serial: number; p_vendor: string };
+        Returns: string;
+      };
+      shop_stock_age_summary: { Args: Record<PropertyKey, never>; Returns: Json };
+      shop_suggest_code: {
+        Args: { p_category?: string; p_guarantee?: boolean; p_location?: string; p_vendor?: string };
+        Returns: Json;
+      };
       shop_summary: { Args: Record<PropertyKey, never>; Returns: Json };
       slugify: { Args: { txt: string }; Returns: string };
       submit_enquiry: {
