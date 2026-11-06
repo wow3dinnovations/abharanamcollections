@@ -115,6 +115,22 @@ def test_customer_optional_and_saved(admin):
     assert custs["total"] == 1 and custs["items"][0]["bill_count"] == 2
 
 
+def test_customer_lookup_by_mobile_shows_past_bills(admin, make_staff):
+    cat, ven, loc, p = pos_setup(admin)
+    assert ok(admin.get("/api/customers/lookup", params={"mobile": "9876543210"}))["found"] is False
+    assert ok(admin.get("/api/customers/lookup", params={"mobile": "12"}))["found"] is False
+    first = ok(sell(admin, loc, p, customer={"name": "Lakshmi", "mobile": "98765 43210", "address": "Nandyal"}))
+    second = ok(sell(admin, loc, p, 2, customer_id=first["customer_id"], discount_type="amount", discount_value=100))
+    r = ok(admin.get("/api/customers/lookup", params={"mobile": "+98765-43210"}))
+    assert r["found"] is True and r["customer"]["name"] == "Lakshmi" and r["customer"]["address"] == "Nandyal"
+    assert r["customer"]["bill_count"] == 2 and r["customer"]["total_spent"] == round(first["total"] + second["total"], 2)
+    assert [b["invoice_number"] for b in r["bills"]] == [second["invoice_number"], first["invoice_number"]]   # newest first
+    assert r["bills"][0]["items"][0]["quantity"] == 2 and "unit_cost" not in r["bills"][0]["items"][0]
+    cashier = make_staff(["sales.create"])                                   # a cashier without customer access can look up
+    assert ok(cashier.get("/api/customers/lookup", params={"mobile": "9876543210"}))["found"] is True
+    assert make_staff([]).get("/api/customers/lookup", params={"mobile": "9876543210"}).status_code == 403
+
+
 def test_cancel_sale_restores_everything(admin, ctx):
     cat, ven, loc, p = pos_setup(admin)
     sale = ok(sell(admin, loc, p, 2, discount_type="percent", discount_value=10))

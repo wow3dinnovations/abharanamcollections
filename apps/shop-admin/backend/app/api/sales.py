@@ -99,6 +99,13 @@ def customers(q: str = "", active_only: bool = False, page: int = 1, page_size: 
     return result
 
 
+@router.get("/customers/lookup")
+def customer_lookup(mobile: str = "", user: dict = Depends(require("customers.view", "customers.manage", "sales.create")),
+                    ctx: AppContext = Depends(get_ctx)):
+    """Billing: type a mobile number, get the existing customer and their recent bills (or found = false)."""
+    return customer_service.lookup_by_mobile(ctx, mobile)
+
+
 @router.post("/customers")
 def add_customer(body: CustomerIn, user: dict = Depends(require("customers.manage", "sales.create")),
                  ctx: AppContext = Depends(get_ctx)):
