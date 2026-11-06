@@ -1,17 +1,20 @@
 # Billing (POS)
 
 ## Making a bill
-1. *Sales → POS / New Bill*. The **Location filter** at the top starts on **All locations** — a bill does not belong to any one location. (Pick a single location only if you want to sell *just* from that place.)
+1. *Sales → POS / New Bill*. There is no location to choose: a bill sells from all locations together.
 2. **Scan** each tag (or search by name). Change quantity with **− / +**. Prices come from the product; they cannot be typed over at the till.
-3. **Customer** (optional): *Walk-in* (nothing to enter), *Find* a saved customer, or *New* (name + mobile — the same mobile is never saved twice).
-4. **Discount** (if allowed): **%** or **₹**, then the number.
+3. **Customer details** (optional): type the customer's **mobile number**.
+   * Existing customer → their name, number of bills, total spent, last visit and **past bills** appear. Tap a bill to see its items; *Open invoice* opens the PDF.
+   * New number → type the name (email and address are optional). The customer is saved with this bill. The same mobile is never saved twice.
+   * Leave it empty for a walk-in customer. *Find by name* searches saved customers who have no mobile.
+4. **Discount** (if allowed): choose **Percentage (%)** or **Amount (₹)**, then type the number. The box shows the other figure too (e.g. *= ₹250 off* or *= 9.81% of the bill*).
 5. **Payment:** Cash, UPI, Card, Bank Transfer, Other — or tick **Split payment** for several methods.
 6. **Save Sale & Generate Bill.** Stock reduces, the sale is saved, an invoice PDF is made, the dashboard updates.
 
 Worked example: ₹799 + ₹998 = ₹1,797 → 10% discount = ₹179.70 → **Final ₹1,617.30**.
 
 ## Which location does the stock come from?
-With **All locations** (the default) scanning and searching work across every location, and *available stock = the total of all locations*. When you press **Save**, the software decides where each piece comes from:
+Scanning and searching work across every location, and *available stock = the total of all locations*. When you press **Save**, the software decides where each piece comes from:
 
 * Stock in **one** location → taken from there.
 * Stock in **several** locations → taken from the location holding the **most** first, then the next, until the quantity is covered. (Equal stock: alphabetical by location name.) Example: Nandyal 5, Warehouse 3, bill for 6 → Nandyal 5 + Warehouse 1.

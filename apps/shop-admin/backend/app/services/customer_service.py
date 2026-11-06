@@ -98,3 +98,25 @@ def with_stats(ctx: AppContext, customers: list[dict]) -> list[dict]:
             st[2] = max(st[2], s["date_time"])
     return [{**c, "bill_count": stats.get(c["id"], [0, 0, ""])[0], "total_spent": round(stats.get(c["id"], [0, 0, ""])[1], 2),
              "last_purchase": stats.get(c["id"], [0, 0, ""])[2]} for c in customers]
+
+
+def normalise_mobile(mobile: str) -> str:
+    return re.sub(r"[\s\-+()]", "", str(mobile or ""))
+
+
+def lookup_by_mobile(ctx: AppContext, mobile: str, bills: int = 10) -> dict:
+    """Billing screen: find the customer with exactly this mobile number, with their latest bills."""
+    m = normalise_mobile(mobile)
+    if not m.isdigit() or not (7 <= len(m) <= 15):
+        return {"found": False, "mobile": m}
+    c = next((c for c in ctx.store.all("customers") if c.get("mobile") == m), None)
+    if c is None:
+        return {"found": False, "mobile": m}
+    sales = [s for s in reversed(ctx.store.all("sales")) if s.get("customer_id") == c["id"]]
+    recent = [{"id": s["id"], "invoice_number": s["invoice_number"], "date_time": s["date_time"], "total": s["total"],
+               "discount_amount": s.get("discount_amount", 0), "status": s["status"], "payment_method": s["payment_method"],
+               "item_count": s.get("item_count", 0),
+               "items": [{"name": i["name"], "sku": i.get("sku", ""), "quantity": i["quantity"], "line_total": i["line_total"]}
+                         for i in s.get("items", [])]}
+              for s in sales[:bills]]
+    return {"found": True, "mobile": m, "customer": with_stats(ctx, [c])[0], "bills": recent}
