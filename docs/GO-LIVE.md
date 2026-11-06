@@ -23,7 +23,7 @@ Do the steps in order. Each says what you should see when it worked.
    - **Project URL**: `https://<project ref>.supabase.co`.
    - **anon / publishable key**: Project Settings → API Keys (anon public, starts `eyJ`, or Publishable, starts `sb_publishable_`).
      This one is safe for the website and app.
-   - **service_role / Secret key**: same page. Not needed for the website or the online shop software. Never put
+   - **service_role / Secret key**: same page. Only for online payment, as a Cloudflare secret ([PAYMENTS.md](PAYMENTS.md)). Never put
      it in the website, app or git.
 3. Put the database in. In PowerShell, in the folder where you cloned this repo:
    ```powershell

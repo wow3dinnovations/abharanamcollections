@@ -54,6 +54,10 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
         </form>
       </section>
       <section>
+        <div className="mb-6 flex items-center justify-between rounded-xl border border-cream bg-white p-4">
+          <p className="font-medium">Orders you placed online</p>
+          <a href="/orders" className="rounded-full bg-maroon px-4 py-2 text-sm text-white">My orders</a>
+        </div>
         <h2 className="mb-4 text-3xl font-semibold text-maroon">My enquiries</h2>
         {enquiries?.length ? (
           <ul className="space-y-3">

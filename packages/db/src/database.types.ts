@@ -23,6 +23,46 @@ export type Database = {
   };
   public: {
     Tables: {
+      addresses: {
+        Row: {
+          city: string;
+          created_at: string;
+          full_name: string;
+          id: string;
+          line1: string;
+          line2: string;
+          phone: string;
+          pincode: string;
+          state: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          city: string;
+          created_at?: string;
+          full_name: string;
+          id?: string;
+          line1: string;
+          line2?: string;
+          phone: string;
+          pincode: string;
+          state: string;
+          user_id?: string;
+        };
+        Update: {
+          city?: string;
+          created_at?: string;
+          full_name?: string;
+          id?: string;
+          line1?: string;
+          line2?: string;
+          phone?: string;
+          pincode?: string;
+          state?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       categories: {
         Row: {
           code: string | null;
@@ -173,6 +213,213 @@ export type Database = {
             columns: ["product_id"];
             isOneToOne: false;
             referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      order_items: {
+        Row: {
+          id: number;
+          image_path: string | null;
+          line_total: number | null;
+          name: string;
+          order_id: string;
+          price: number;
+          product_id: string | null;
+          quantity: number;
+          sku: string;
+          stock_from: NonNullable<Json>;
+        };
+        ComputedFields: never;
+        Insert: {
+          id?: never;
+          image_path?: string | null;
+          line_total?: never;
+          name: string;
+          order_id: string;
+          price: number;
+          product_id?: string | null;
+          quantity: number;
+          sku: string;
+          stock_from?: NonNullable<Json>;
+        };
+        Update: {
+          id?: never;
+          image_path?: string | null;
+          line_total?: never;
+          name?: string;
+          order_id?: string;
+          price?: number;
+          product_id?: string | null;
+          quantity?: number;
+          sku?: string;
+          stock_from?: NonNullable<Json>;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "catalog";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      order_status_history: {
+        Row: {
+          created_at: string;
+          id: number;
+          note: string;
+          order_id: string;
+          status: Database["public"]["Enums"]["order_status"];
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          id?: never;
+          note?: string;
+          order_id: string;
+          status: Database["public"]["Enums"]["order_status"];
+        };
+        Update: {
+          created_at?: string;
+          id?: never;
+          note?: string;
+          order_id?: string;
+          status?: Database["public"]["Enums"]["order_status"];
+        };
+        Relationships: [
+          {
+            foreignKeyName: "order_status_history_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      orders: {
+        Row: {
+          admin_note: string;
+          created_at: string;
+          customer_notes: string;
+          email: string;
+          gateway_order_id: string | null;
+          id: string;
+          number: string;
+          paid_at: string | null;
+          pay_token: string;
+          payment_method: Database["public"]["Enums"]["payment_method"];
+          payment_status: Database["public"]["Enums"]["payment_status"];
+          shipping_address: NonNullable<Json>;
+          shipping_fee: number;
+          status: Database["public"]["Enums"]["order_status"];
+          subtotal: number;
+          total: number;
+          tracking: string;
+          updated_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          admin_note?: string;
+          created_at?: string;
+          customer_notes?: string;
+          email?: string;
+          gateway_order_id?: string | null;
+          id?: string;
+          number?: string;
+          paid_at?: string | null;
+          pay_token?: string;
+          payment_method: Database["public"]["Enums"]["payment_method"];
+          payment_status?: Database["public"]["Enums"]["payment_status"];
+          shipping_address: NonNullable<Json>;
+          shipping_fee?: number;
+          status?: Database["public"]["Enums"]["order_status"];
+          subtotal: number;
+          total: number;
+          tracking?: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          admin_note?: string;
+          created_at?: string;
+          customer_notes?: string;
+          email?: string;
+          gateway_order_id?: string | null;
+          id?: string;
+          number?: string;
+          paid_at?: string | null;
+          pay_token?: string;
+          payment_method?: Database["public"]["Enums"]["payment_method"];
+          payment_status?: Database["public"]["Enums"]["payment_status"];
+          shipping_address?: NonNullable<Json>;
+          shipping_fee?: number;
+          status?: Database["public"]["Enums"]["order_status"];
+          subtotal?: number;
+          total?: number;
+          tracking?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      payments: {
+        Row: {
+          amount: number;
+          created_at: string;
+          gateway_payment_id: string | null;
+          id: string;
+          method: Database["public"]["Enums"]["payment_method"];
+          note: string;
+          order_id: string;
+          raw: Json | null;
+          status: Database["public"]["Enums"]["payment_status"];
+        };
+        ComputedFields: never;
+        Insert: {
+          amount: number;
+          created_at?: string;
+          gateway_payment_id?: string | null;
+          id?: string;
+          method: Database["public"]["Enums"]["payment_method"];
+          note?: string;
+          order_id: string;
+          raw?: Json | null;
+          status: Database["public"]["Enums"]["payment_status"];
+        };
+        Update: {
+          amount?: number;
+          created_at?: string;
+          gateway_payment_id?: string | null;
+          id?: string;
+          method?: Database["public"]["Enums"]["payment_method"];
+          note?: string;
+          order_id?: string;
+          raw?: Json | null;
+          status?: Database["public"]["Enums"]["payment_status"];
+        };
+        Relationships: [
+          {
+            foreignKeyName: "payments_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders";
             referencedColumns: ["id"];
           },
         ];
@@ -691,50 +938,71 @@ export type Database = {
         Row: {
           address: string;
           announcement: string;
+          cod_enabled: boolean;
           email: string;
           enquiries_open: boolean;
+          free_shipping_above: number;
           id: number;
           instagram_url: string;
           last_sync_at: string | null;
+          orders_open: boolean;
           phone: string;
+          razorpay_enabled: boolean;
+          shipping_fee: number;
           show_prices: boolean;
           show_stock_count: boolean;
           store_name: string;
           tagline: string;
           updated_at: string;
+          upi_id: string;
+          upi_manual_enabled: boolean;
           whatsapp_number: string;
         };
         ComputedFields: never;
         Insert: {
           address?: string;
           announcement?: string;
+          cod_enabled?: boolean;
           email?: string;
           enquiries_open?: boolean;
+          free_shipping_above?: number;
           id?: number;
           instagram_url?: string;
           last_sync_at?: string | null;
+          orders_open?: boolean;
           phone?: string;
+          razorpay_enabled?: boolean;
+          shipping_fee?: number;
           show_prices?: boolean;
           show_stock_count?: boolean;
           store_name?: string;
           tagline?: string;
           updated_at?: string;
+          upi_id?: string;
+          upi_manual_enabled?: boolean;
           whatsapp_number?: string;
         };
         Update: {
           address?: string;
           announcement?: string;
+          cod_enabled?: boolean;
           email?: string;
           enquiries_open?: boolean;
+          free_shipping_above?: number;
           id?: number;
           instagram_url?: string;
           last_sync_at?: string | null;
+          orders_open?: boolean;
           phone?: string;
+          razorpay_enabled?: boolean;
+          shipping_fee?: number;
           show_prices?: boolean;
           show_stock_count?: boolean;
           store_name?: string;
           tagline?: string;
           updated_at?: string;
+          upi_id?: string;
+          upi_manual_enabled?: boolean;
           whatsapp_number?: string;
         };
         Relationships: [];
@@ -859,7 +1127,53 @@ export type Database = {
       };
     };
     Functions: {
+      admin_update_order: {
+        Args: {
+          p_note?: string;
+          p_order: string;
+          p_payment?: Database["public"]["Enums"]["payment_status"];
+          p_status?: Database["public"]["Enums"]["order_status"];
+          p_tracking?: string;
+        };
+        Returns: undefined;
+      };
+      cancel_my_order: { Args: { p_order: string }; Returns: undefined };
       is_admin: { Args: Record<PropertyKey, never>; Returns: boolean };
+      order_admin_note: { Args: { p_order: string }; Returns: string };
+      order_for_payment: { Args: { p_order: string; p_token: string }; Returns: Json };
+      order_mark_paid: {
+        Args: {
+          p_amount_paise: number;
+          p_gateway_order: string;
+          p_payment_id: string;
+          p_raw: Json;
+        };
+        Returns: string;
+      };
+      order_return_stock: { Args: { p_order: string }; Returns: undefined };
+      order_set_gateway: {
+        Args: { p_gateway_order: string; p_order: string; p_token: string };
+        Returns: undefined;
+      };
+      order_take_stock: {
+        Args: { p_product: string; p_qty: number; p_ref: string };
+        Returns: Json;
+      };
+      place_order: {
+        Args: {
+          p_address_id: string;
+          p_items: Json;
+          p_method: Database["public"]["Enums"]["payment_method"];
+          p_notes?: string;
+        };
+        Returns: {
+          id: string;
+          number: string;
+          pay_token: string;
+          total: number;
+        }[];
+      };
+      release_unpaid_orders: { Args: Record<PropertyKey, never>; Returns: number };
       shop_bump_code: { Args: { p_code: string }; Returns: string };
       shop_cancel_sale: { Args: { p_sale: string }; Returns: undefined };
       shop_create_sale: { Args: { p: Json }; Returns: Json };
@@ -913,6 +1227,9 @@ export type Database = {
     };
     Enums: {
       enquiry_status: "new" | "contacted" | "confirmed" | "completed" | "cancelled";
+      order_status: "placed" | "confirmed" | "packed" | "shipped" | "delivered" | "cancelled";
+      payment_method: "razorpay" | "upi_manual" | "cod";
+      payment_status: "pending" | "paid" | "failed" | "refunded";
       user_role: "admin" | "customer";
     };
     CompositeTypes: {
@@ -1033,6 +1350,9 @@ export const Constants = {
   public: {
     Enums: {
       enquiry_status: ["new", "contacted", "confirmed", "completed", "cancelled"],
+      order_status: ["placed", "confirmed", "packed", "shipped", "delivered", "cancelled"],
+      payment_method: ["razorpay", "upi_manual", "cod"],
+      payment_status: ["pending", "paid", "failed", "refunded"],
       user_role: ["admin", "customer"],
     },
   },

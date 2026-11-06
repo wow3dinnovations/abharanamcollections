@@ -27,12 +27,12 @@ export function AddToBag({ p }: { p: P }) {
           }}
           className="flex-1 rounded-full bg-maroon px-6 py-3 text-sm font-semibold text-white hover:bg-maroon-dark"
         >
-          {p.inStock ? "Add to enquiry bag" : "Request this design"}
+          {p.inStock ? "Add to bag" : "Request this design"}
         </button>
       </div>
       {(added || inBag > 0) && (
         <p className="text-sm text-green-800" role="status">
-          {inBag} in your bag. <Link href="/bag" className="font-medium underline">View bag & send enquiry</Link>
+          {inBag} in your bag. <Link href="/bag" className="font-medium underline">View bag</Link>
         </p>
       )}
     </div>

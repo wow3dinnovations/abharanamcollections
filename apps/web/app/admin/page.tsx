@@ -5,7 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 export default async function AdminHome() {
   const supabase = await createClient();
   const count = async (q: PromiseLike<{ count: number | null }>) => (await q).count ?? 0;
-  const [newEnq, openEnq, products, visible, soldOut, noPhoto, settings] = await Promise.all([
+  const [newOrders, toShip, newEnq, openEnq, products, visible, soldOut, noPhoto, settings] = await Promise.all([
+    count(supabase.from("orders").select("id", { count: "exact", head: true }).eq("status", "placed")),
+    count(supabase.from("orders").select("id", { count: "exact", head: true }).in("status", ["confirmed", "packed"])),
     count(supabase.from("enquiries").select("id", { count: "exact", head: true }).eq("status", "new")),
     count(supabase.from("enquiries").select("id", { count: "exact", head: true }).in("status", ["new", "contacted", "confirmed"])),
     count(supabase.from("products").select("id", { count: "exact", head: true }).eq("is_active", true)),
@@ -16,6 +18,8 @@ export default async function AdminHome() {
   ]);
   const last = settings.data?.last_sync_at;
   const stats: [string, number, string][] = [
+    ["New orders", newOrders, "/admin/orders?status=placed"],
+    ["Orders to ship", toShip, "/admin/orders?status=to_ship"],
     ["New enquiries", newEnq, "/admin/enquiries?status=new"],
     ["Open enquiries", openEnq, "/admin/enquiries"],
     ["On the website", visible, "/admin/products"],

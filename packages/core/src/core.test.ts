@@ -70,3 +70,20 @@ describe("enquiry bag", () => {
     expect(whatsappLink("", "x")).toBeNull();
   });
 });
+
+import { isPincode, shippingFor, upiLink } from "./orders";
+describe("orders", () => {
+  it("checks PIN codes", () => {
+    expect(isPincode("518501")).toBe(true);
+    expect(isPincode("018501")).toBe(false);
+    expect(isPincode("51850")).toBe(false);
+  });
+  it("works out delivery charges", () => {
+    expect(shippingFor(999, 80, 5000)).toBe(80);
+    expect(shippingFor(5000, 80, 5000)).toBe(0);
+    expect(shippingFor(9999, 80, 0)).toBe(80);
+  });
+  it("makes a UPI link", () => {
+    expect(upiLink("shop@upi", "Abharanam", 1500, "ABH-1001")).toBe("upi://pay?pa=shop%40upi&pn=Abharanam&am=1500.00&cu=INR&tn=ABH-1001");
+  });
+});

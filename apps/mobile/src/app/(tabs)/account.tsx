@@ -65,13 +65,14 @@ export default function Account() {
       ) : (
         <View style={ui.card}>
           <Text style={ui.h2}>Log in (optional)</Text>
-          <Text style={ui.muted}>Logging in fills your details on enquiries and shows your past enquiries.</Text>
+          <Text style={ui.muted}>Log in to buy online, see your orders and past enquiries.</Text>
           <Button title="Log in with email" onPress={() => router.push("/login")} />
         </View>
       )}
 
       {session && (
         <View style={{ gap: 10 }}>
+          <Button title="My orders" variant="outline" onPress={() => router.push("/orders")} />
           <Text style={ui.h2}>My enquiries</Text>
           {data.data?.enquiries.length ? (
             data.data.enquiries.map((e) => (

@@ -31,3 +31,30 @@ export async function saveSettings(form: FormData) {
   revalidatePath("/", "layout");
   redirect("/admin/settings?saved=1");
 }
+
+export async function saveOrderSettings(form: FormData) {
+  const { supabase } = await requireAdmin();
+  const money = (k: string) => {
+    const n = Number(str(form, k) || 0);
+    return Number.isFinite(n) && n >= 0 ? Math.round(n) : 0;
+  };
+  const upi = str(form, "upi_id");
+  if (upi && !/^[\w.\-]{2,}@[a-zA-Z][\w.\-]{1,}$/.test(upi)) redirect("/admin/settings?error=UPI+ID+looks+wrong,+e.g.+abharanam@okhdfcbank");
+  if (bool(form, "upi_manual_enabled") && !upi) redirect("/admin/settings?error=Enter+your+UPI+ID+to+take+UPI+payments");
+  check(
+    await supabase
+      .from("store_settings")
+      .update({
+        orders_open: bool(form, "orders_open"),
+        razorpay_enabled: bool(form, "razorpay_enabled"),
+        upi_manual_enabled: bool(form, "upi_manual_enabled"),
+        cod_enabled: bool(form, "cod_enabled"),
+        upi_id: upi,
+        shipping_fee: money("shipping_fee"),
+        free_shipping_above: money("free_shipping_above"),
+      })
+      .eq("id", 1),
+  );
+  revalidatePath("/", "layout");
+  redirect("/admin/settings?saved=1");
+}

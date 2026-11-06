@@ -89,7 +89,7 @@ export default function Bag() {
   if (!lines.length) {
     return (
       <View style={ui.screen}>
-        <Empty title="Your enquiry bag is empty" hint="Add the designs you like and send us one enquiry for all of them.">
+        <Empty title="Your bag is empty" hint="Add the designs you like, then order or send us one enquiry for all of them.">
           <View style={{ width: 200 }}><Button title="Start browsing" onPress={() => router.push("/shop")} /></View>
         </Empty>
       </View>
@@ -129,8 +129,14 @@ export default function Bag() {
           <Text style={ui.text}>{count} {count === 1 ? "piece" : "pieces"}</Text>
           {showPrice && <Text style={[ui.price, { fontSize: 20 }]}>{rupees(total)}</Text>}
         </View>
+        {settings?.orders_open && (settings.razorpay_enabled || (settings.upi_manual_enabled && !!settings.upi_id) || settings.cod_enabled) && (
+          <View style={[ui.card, { gap: 8 }]}>
+            <Button title="Buy now" onPress={() => router.push("/checkout")} />
+            <Text style={ui.muted}>Pay online, by UPI or cash on delivery. Delivery charges shown at checkout.</Text>
+          </View>
+        )}
         <View style={[ui.card, { gap: 12 }]}>
-          <Text style={ui.h2}>Your details</Text>
+          <Text style={ui.h2}>{settings?.orders_open ? "Or send an enquiry" : "Your details"}</Text>
           <Text style={ui.muted}>We confirm availability, delivery charges and payment on call or WhatsApp. No payment now.</Text>
           {field("name", "Your name", { autoComplete: "name" })}
           {field("phone", "Mobile number", { keyboardType: "phone-pad", autoComplete: "tel", placeholder: "98765 43210" })}

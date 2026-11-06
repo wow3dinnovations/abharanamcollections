@@ -9,7 +9,8 @@ import { submitEnquiry, type EnquiryState } from "./actions";
 
 type Live = { id: string; name: string; price: number; sku: string; slug: string; image_paths: string[]; in_stock: boolean | null; category_name: string | null };
 
-export function BagView({ whatsapp, open, showPrices, profile }: {
+export function BagView({ whatsapp, open, showPrices, profile, canOrder }: {
+  canOrder: boolean;
   whatsapp: string;
   open: boolean;
   showPrices: boolean;
@@ -63,8 +64,8 @@ export function BagView({ whatsapp, open, showPrices, profile }: {
   if (!lines.length) {
     return (
       <div className="rounded-xl border border-cream bg-white p-10 text-center">
-        <p className="font-display text-2xl text-maroon">Your enquiry bag is empty</p>
-        <p className="mt-1 text-sm text-muted">Add the designs you like and send us one enquiry for all of them.</p>
+        <p className="font-display text-2xl text-maroon">Your bag is empty</p>
+        <p className="mt-1 text-sm text-muted">Add the designs you like, then order online or send us one enquiry for all of them.</p>
         <Link href="/shop" className="mt-4 inline-block rounded-full bg-maroon px-5 py-2 text-sm text-white">Start browsing</Link>
       </div>
     );
@@ -102,19 +103,38 @@ export function BagView({ whatsapp, open, showPrices, profile }: {
         {loaded && <li className="p-4 text-xs text-muted">Prices are checked again when you send the enquiry.</li>}
       </ul>
 
+      <div className="h-fit space-y-4">
+      {canOrder && (
+        <div className="space-y-3 rounded-xl border border-maroon/40 bg-white p-5">
+          <div className="flex justify-between text-sm">
+            <span>{count} {count === 1 ? "piece" : "pieces"}</span>
+            {showPrices && <span className="text-lg font-semibold text-maroon">{rupees(total)}</span>}
+          </div>
+          <Link href="/checkout" className="block w-full rounded-full bg-maroon py-3 text-center text-sm font-semibold text-white hover:bg-maroon-dark">
+            Buy now
+          </Link>
+          <p className="text-center text-xs text-muted">Pay online, by UPI or cash on delivery. Delivery charges shown at checkout.</p>
+        </div>
+      )}
       <form
         action={(fd) => {
           sentLines.current = lines;
           fd.set("items", JSON.stringify(lines.map((l) => ({ productId: l.productId, quantity: l.quantity }))));
           return action(fd);
         }}
-        className="h-fit space-y-3 rounded-xl border border-cream bg-white p-5"
+        className="space-y-3 rounded-xl border border-cream bg-white p-5"
       >
-        <div className="flex justify-between text-sm">
-          <span>{count} {count === 1 ? "piece" : "pieces"}</span>
-          {showPrices && <span className="text-lg font-semibold text-maroon">{rupees(total)}</span>}
-        </div>
-        <div className="gold-rule" />
+        {canOrder ? (
+          <p className="font-semibold">Or send an enquiry</p>
+        ) : (
+          <>
+            <div className="flex justify-between text-sm">
+              <span>{count} {count === 1 ? "piece" : "pieces"}</span>
+              {showPrices && <span className="text-lg font-semibold text-maroon">{rupees(total)}</span>}
+            </div>
+            <div className="gold-rule" />
+          </>
+        )}
         <p className="text-sm text-muted">Send your details and we&apos;ll confirm availability, delivery charges and payment on call or WhatsApp. No payment now.</p>
         <Field label="Your name" name="name" required defaultValue={v.name ?? profile?.name} autoComplete="name" />
         <Field label="Mobile number" name="phone" required type="tel" inputMode="tel" defaultValue={v.phone ?? profile?.phone} autoComplete="tel" placeholder="98765 43210" />
@@ -129,6 +149,7 @@ export function BagView({ whatsapp, open, showPrices, profile }: {
           {pending ? "Sending…" : open ? "Send enquiry" : "Enquiries are paused – please WhatsApp us"}
         </button>
       </form>
+      </div>
     </div>
   );
 }

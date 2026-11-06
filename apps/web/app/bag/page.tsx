@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { getSettings } from "@/lib/catalog";
+import { razorpayKeys } from "@/lib/razorpay";
 import { createClient, getSessionProfile } from "@/lib/supabase/server";
 import { BagView } from "./BagView";
 
-export const metadata: Metadata = { title: "Enquiry bag", robots: { index: false } };
+export const metadata: Metadata = { title: "Your bag", robots: { index: false } };
 
 export default async function BagPage() {
   const [settings, session] = await Promise.all([getSettings(), getSessionProfile()]);
@@ -15,13 +16,17 @@ export default async function BagPage() {
   }
   return (
     <div>
-      <h1 className="text-4xl font-semibold text-maroon">Your enquiry bag</h1>
+      <h1 className="text-4xl font-semibold text-maroon">Your bag</h1>
       <div className="gold-rule mb-6 mt-1 w-24" />
       <BagView
         whatsapp={settings?.whatsapp_number ?? ""}
         open={settings?.enquiries_open ?? true}
         showPrices={settings?.show_prices ?? true}
         profile={profile}
+        canOrder={
+          !!settings?.orders_open &&
+          ((settings.razorpay_enabled && !!razorpayKeys()) || (settings.upi_manual_enabled && !!settings.upi_id) || settings.cod_enabled)
+        }
       />
     </div>
   );

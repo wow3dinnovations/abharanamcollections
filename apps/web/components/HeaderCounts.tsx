@@ -24,7 +24,7 @@ export function HeaderCounts() {
         </svg>
         <Count n={wish.length} />
       </Link>
-      <Link href="/bag" className="relative p-1" aria-label={`Enquiry bag, ${count} pieces`}>
+      <Link href="/bag" className="relative p-1" aria-label={`Bag, ${count} pieces`}>
         <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
           <path d="M5 8h14l-1.2 12H6.2L5 8z" />
           <path d="M9 8V6a3 3 0 0 1 6 0v2" />

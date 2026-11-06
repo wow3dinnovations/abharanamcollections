@@ -89,7 +89,7 @@ export default function Product() {
         <View style={[ui.row, { gap: 12 }]}>
           <Stepper value={qty} onChange={(n) => setQty(Math.max(1, n))} />
           <View style={{ flex: 1 }}>
-            <Button title={p.in_stock ? "Add to enquiry bag" : "Request this design"}
+            <Button title={p.in_stock ? "Add to bag" : "Request this design"}
               onPress={() => bag.add({ productId: p.id!, sku: p.sku, name: p.name, price: Number(p.price), quantity: qty, slug: p.slug })} />
           </View>
         </View>

@@ -1,6 +1,7 @@
 import { Button, Card, Field, Input, PageHeader, Textarea } from "@/components/admin/ui";
+import { razorpayKeys } from "@/lib/razorpay";
 import { createClient } from "@/lib/supabase/server";
-import { saveSettings } from "./actions";
+import { saveOrderSettings, saveSettings } from "./actions";
 
 export default async function AdminSettings({ searchParams }: { searchParams: Promise<{ saved?: string; error?: string }> }) {
   const { saved, error } = await searchParams;
@@ -37,6 +38,24 @@ export default async function AdminSettings({ searchParams }: { searchParams: Pr
           {saved && <p className="text-sm text-green-800">Saved.</p>}
           {error && <p className="text-sm text-red-700">{error}</p>}
           <div><Button>Save settings</Button></div>
+        </form>
+      </Card>
+      <Card title="Online orders and payment" className="mt-6">
+        <form action={saveOrderSettings} className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2 text-sm sm:col-span-2">
+            <label className="flex items-center gap-2"><input type="checkbox" name="orders_open" defaultChecked={s.orders_open} /> Take online orders (the &quot;Buy now&quot; button)</label>
+            <label className="flex items-center gap-2">
+              <input type="checkbox" name="razorpay_enabled" defaultChecked={s.razorpay_enabled} /> Pay online with Razorpay (UPI apps, cards, netbanking)
+              {!razorpayKeys() && <span className="text-xs text-amber-700">· Razorpay keys are not set on the server yet, so this stays hidden</span>}
+            </label>
+            <label className="flex items-center gap-2"><input type="checkbox" name="upi_manual_enabled" defaultChecked={s.upi_manual_enabled} /> UPI to our account (you mark the order paid)</label>
+            <label className="flex items-center gap-2"><input type="checkbox" name="cod_enabled" defaultChecked={s.cod_enabled} /> Cash on delivery</label>
+          </div>
+          <Field label="Your UPI ID (for UPI to our account)"><Input name="upi_id" defaultValue={s.upi_id} placeholder="abharanam@okhdfcbank" /></Field>
+          <div />
+          <Field label="Delivery charge (₹)"><Input name="shipping_fee" type="number" min="0" defaultValue={Number(s.shipping_fee)} /></Field>
+          <Field label="Free delivery on orders from (₹, 0 = never free)"><Input name="free_shipping_above" type="number" min="0" defaultValue={Number(s.free_shipping_above)} /></Field>
+          <div><Button>Save order settings</Button></div>
         </form>
       </Card>
     </div>
