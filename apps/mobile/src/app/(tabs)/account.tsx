@@ -26,9 +26,11 @@ export default function Account() {
   }, [userId]);
   const [form, setForm] = useState({ full_name: "", phone: "", city: "" });
   const [msg, setMsg] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
   useEffect(() => {
     const p = data.data?.profile;
     if (p) setForm({ full_name: p.full_name ?? "", phone: p.phone ?? "", city: p.city ?? "" });
+    setEditing(!p?.full_name || !p?.phone);
   }, [data.data?.profile]);
 
   const s = data.data?.settings;
@@ -39,7 +41,9 @@ export default function Account() {
     const phone = form.phone.trim() ? normaliseIndianMobile(form.phone) : null;
     if (form.phone.trim() && !phone) return setMsg("Enter a valid 10-digit mobile number");
     const { error } = await supabase.from("profiles").update({ full_name: form.full_name.trim() || null, phone, city: form.city.trim() || null }).eq("id", userId);
-    setMsg(error ? error.message : "Saved");
+    if (error) return setMsg(error.message);
+    setMsg("Your details are saved.");
+    setEditing(false);
   }
 
   const link = (label: string, path: string) => (
@@ -54,12 +58,24 @@ export default function Account() {
         <View style={ui.card}>
           <Text style={ui.h2}>My details</Text>
           <Text style={ui.muted}>{session.user.email}</Text>
-          {(["full_name", "phone", "city"] as const).map((k) => (
-            <TextInput key={k} style={ui.input} value={form[k]} onChangeText={(v) => setForm({ ...form, [k]: v })}
-              placeholder={{ full_name: "Name", phone: "Mobile", city: "City / town" }[k]} accessibilityLabel={k} keyboardType={k === "phone" ? "phone-pad" : "default"} />
-          ))}
-          {msg && <Text style={ui.muted}>{msg}</Text>}
-          <Button title="Save" onPress={save} />
+          {editing ? (
+            <>
+              {(["full_name", "phone", "city"] as const).map((k) => (
+                <TextInput key={k} style={ui.input} value={form[k]} onChangeText={(v) => setForm({ ...form, [k]: v })}
+                  placeholder={{ full_name: "Name", phone: "Mobile", city: "City / town" }[k]} accessibilityLabel={k} keyboardType={k === "phone" ? "phone-pad" : "default"} />
+              ))}
+              {msg && <Text style={ui.muted}>{msg}</Text>}
+              <Button title="Save" onPress={save} />
+            </>
+          ) : (
+            <>
+              {msg && <Text style={{ color: colors.maroon }}>{msg}</Text>}
+              <Text style={[ui.text, { fontWeight: "600" }]}>{form.full_name}</Text>
+              <Text style={ui.text}>{form.phone}</Text>
+              {form.city ? <Text style={ui.text}>{form.city}</Text> : null}
+              <Button title="Edit details" variant="outline" onPress={() => { setMsg(null); setEditing(true); }} />
+            </>
+          )}
           <Button title="Log out" variant="outline" onPress={() => supabase.auth.signOut()} />
         </View>
       ) : (

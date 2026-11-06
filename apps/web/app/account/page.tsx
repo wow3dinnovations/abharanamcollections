@@ -15,10 +15,10 @@ const STATUS: Record<string, string> = {
   cancelled: "Cancelled",
 };
 
-export default async function AccountPage({ searchParams }: { searchParams: Promise<{ saved?: string; error?: string }> }) {
+export default async function AccountPage({ searchParams }: { searchParams: Promise<{ saved?: string; error?: string; edit?: string }> }) {
   const session = await getSessionProfile();
   if (!session) redirect("/login?next=/account");
-  const { saved, error } = await searchParams;
+  const { saved, error, edit } = await searchParams;
   const supabase = await createClient();
   const [{ data: profile }, { data: enquiries }] = await Promise.all([
     supabase.from("profiles").select("full_name, phone, city").eq("id", session.user.id).single(),
@@ -28,12 +28,15 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
       .order("created_at", { ascending: false })
       .limit(50),
   ]);
+  // Show the form only while editing, or until a name and mobile are saved.
+  const editing = !!edit || !!error || !profile?.full_name || !profile?.phone;
 
   return (
     <div className="grid gap-8 md:grid-cols-[320px_1fr]">
       <section className="h-fit space-y-4 rounded-xl border border-cream bg-white p-5">
         <h1 className="text-3xl font-semibold text-maroon">My account</h1>
         <p className="text-sm text-muted">{session.user.email}</p>
+        {editing ? (
         <form action={saveProfile} className="space-y-3">
           {[
             ["full_name", "Name", profile?.full_name],
@@ -45,10 +48,21 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
               <input name={name ?? ""} defaultValue={value ?? ""} className="rounded border border-cream bg-ivory px-3 py-2 text-sm text-ink" />
             </label>
           ))}
-          {saved && <p className="text-sm text-green-800">Saved.</p>}
           {error && <p className="text-sm text-red-700">{error}</p>}
           <button className="w-full rounded-full bg-maroon py-2 text-sm font-medium text-white">Save</button>
+          {profile?.full_name && profile?.phone && (
+            <a href="/account" className="block text-center text-sm text-muted underline">Cancel</a>
+          )}
         </form>
+        ) : (
+          <div className="space-y-1 text-sm">
+            {saved && <p className="mb-2 rounded bg-green-50 p-2 text-green-800">Your details are saved.</p>}
+            <p className="font-medium">{profile?.full_name}</p>
+            <p>{profile?.phone}</p>
+            {profile?.city && <p>{profile.city}</p>}
+            <a href="/account?edit=1" className="inline-block pt-2 text-maroon underline">Edit details</a>
+          </div>
+        )}
         <form action={signOut}>
           <button className="text-sm text-muted underline">Log out</button>
         </form>
