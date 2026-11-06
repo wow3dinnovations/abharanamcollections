@@ -103,10 +103,11 @@ export async function setStock(form: FormData) {
 }
 
 // ------------------------------------------------------------------------------------------ billing
+/** have = pieces in stock over all locations (a bill sells from wherever the piece is). */
 export type BillProduct = { id: string; sku: string; name: string; price: number; barcode: string | null; have: number };
 
 /** Find a product by barcode or code (exact), else by name. */
-export async function findForBill(term: string, location: string): Promise<BillProduct[]> {
+export async function findForBill(term: string): Promise<BillProduct[]> {
   const { supabase } = await requireAdmin();
   const t = term.trim();
   if (!t) return [];
@@ -128,15 +129,17 @@ export async function findForBill(term: string, location: string): Promise<BillP
     name: r.name,
     price: Number(r.price),
     barcode: r.shop_products?.barcode ?? null,
-    have: r.shop_stock.find((s) => s.location_id === location)?.qty ?? 0,
+    have: r.shop_stock.reduce((a, s) => a + s.qty, 0),
   }));
 }
 
 export type SaleInput = {
-  location_id: string;
-  customer_name: string;
   customer_phone: string;
-  discount: string;
+  customer_name: string;
+  customer_email: string;
+  customer_address: string;
+  discount_type: "amount" | "percent";
+  discount_value: string;
   payment_method: string;
   notes: string;
   items: { product_id: string; qty: number; price: number }[];
@@ -153,6 +156,67 @@ export async function createSale(input: SaleInput): Promise<Result<{ id: string;
   } catch (e) {
     return fail(e);
   }
+}
+
+export type PastBill = {
+  id: string;
+  number: string;
+  created_at: string;
+  total: number;
+  discount: number;
+  status: string;
+  payment_method: string;
+  items: { sku: string; name: string; qty: number; line_total: number }[];
+};
+export type CustomerLookup = {
+  phone: string;
+  customer: { id: string; name: string; email: string; address: string; created_at: string } | null;
+  bills: PastBill[];
+  bill_count: number;
+  total_spent: number;
+};
+
+/** Same rule as the database (shop_clean_phone): digits only, without +91 or a leading 0. */
+function cleanPhone(p: string) {
+  const d = p.replace(/\D/g, "");
+  if (/^91\d{10}$/.test(d)) return d.slice(2);
+  if (/^0\d{10}$/.test(d)) return d.slice(1);
+  return d;
+}
+
+/** Billing: the customer with this phone number and their latest bills. */
+export async function findCustomer(phone: string): Promise<CustomerLookup> {
+  const { supabase } = await requireAdmin();
+  const p = cleanPhone(phone);
+  const none = { phone: p, customer: null, bills: [], bill_count: 0, total_spent: 0 };
+  if (!/^\d{7,15}$/.test(p)) return none;
+  const { data: c } = await supabase.from("shop_customers").select("id, name, email, address, created_at").eq("phone", p).maybeSingle();
+  if (!c) return none;
+  const [{ data: bills }, { data: all }] = await Promise.all([
+    supabase
+      .from("shop_sales")
+      .select("id, number, created_at, total, discount, status, payment_method, shop_sale_items(sku, name, qty, line_total)")
+      .eq("customer_id", c.id)
+      .order("created_at", { ascending: false })
+      .limit(10),
+    supabase.from("shop_sales").select("total").eq("customer_id", c.id).eq("status", "paid"),
+  ]);
+  return {
+    phone: p,
+    customer: c,
+    bills: (bills ?? []).map((b) => ({
+      id: b.id,
+      number: b.number,
+      created_at: b.created_at,
+      total: Number(b.total),
+      discount: Number(b.discount),
+      status: b.status,
+      payment_method: b.payment_method,
+      items: b.shop_sale_items.map((i) => ({ sku: i.sku, name: i.name, qty: i.qty, line_total: Number(i.line_total) })),
+    })),
+    bill_count: all?.length ?? 0,
+    total_spent: (all ?? []).reduce((a, s) => a + Number(s.total), 0),
+  };
 }
 
 export async function cancelSale(form: FormData) {
