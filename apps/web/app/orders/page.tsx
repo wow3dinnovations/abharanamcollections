@@ -1,4 +1,4 @@
-import { ORDER_STATUS_LABEL, PAYMENT_STATUS_LABEL, rupees, type OrderStatus, type PaymentStatus } from "@abh/core";
+import { awaitingPayment, orderStageLabel, PAYMENT_STATUS_LABEL, rupees, type PaymentStatus } from "@abh/core";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -13,7 +13,7 @@ export default async function OrdersPage() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("orders")
-    .select("id, number, status, payment_status, total, created_at, order_items(name, quantity)")
+    .select("id, number, status, payment_method, payment_status, total, created_at, order_items(name, quantity)")
     .order("created_at", { ascending: false })
     .limit(50);
   return (
@@ -28,8 +28,8 @@ export default async function OrdersPage() {
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="font-medium">{o.number}</p>
                   <span className="flex gap-1 text-xs">
-                    <span className={`rounded-full px-2 py-0.5 ${STATUS_TONE[o.status]}`}>{ORDER_STATUS_LABEL[o.status as OrderStatus]}</span>
-                    {o.status !== "cancelled" && <span className={`rounded-full px-2 py-0.5 ${STATUS_TONE[o.payment_status]}`}>{PAYMENT_STATUS_LABEL[o.payment_status as PaymentStatus]}</span>}
+                    <span className={`rounded-full px-2 py-0.5 ${STATUS_TONE[awaitingPayment(o) ? "pending" : o.status]}`}>{orderStageLabel(o)}</span>
+                    {o.status !== "cancelled" && !awaitingPayment(o) && <span className={`rounded-full px-2 py-0.5 ${STATUS_TONE[o.payment_status]}`}>{PAYMENT_STATUS_LABEL[o.payment_status as PaymentStatus]}</span>}
                   </span>
                 </div>
                 <p className="text-xs text-muted">

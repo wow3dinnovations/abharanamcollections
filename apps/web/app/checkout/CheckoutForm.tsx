@@ -12,7 +12,7 @@ import { placeOrder, type NewAddress } from "./actions";
 
 const HINT: Record<PaymentMethod, string> = {
   razorpay: "Pay now with any UPI app, debit/credit card or netbanking. Secure payment by Razorpay.",
-  upi_manual: "After placing the order, pay our UPI ID. We confirm once we see the payment.",
+  upi_manual: "On the next screen, scan the QR code or open your UPI app to pay. We confirm the order once we see the payment.",
   cod: "Pay in cash when the parcel arrives.",
 };
 const input = "w-full rounded border border-cream bg-ivory px-3 py-2 text-sm text-ink";
@@ -175,7 +175,7 @@ export function CheckoutForm({ methods, addresses, shippingFee, freeAbove, profi
         )}
         {error && <p className="rounded bg-red-50 p-2 text-red-800" role="alert">{error}</p>}
         <button disabled={pending || placed || soldOut.length > 0} className="w-full rounded-full bg-maroon py-3 font-semibold text-white hover:bg-maroon-dark disabled:opacity-50">
-          {pending || placed ? "Placing order…" : method === "razorpay" ? `Place order & pay ${rupees(subtotal + shipping)}` : "Place order"}
+          {pending || placed ? "Please wait…" : method === "cod" ? "Place order" : `Continue to pay ${rupees(subtotal + shipping)}`}
         </button>
         <p className="text-xs text-muted">
           By placing the order you agree to our <Link href="/terms" className="underline">terms</Link>,{" "}

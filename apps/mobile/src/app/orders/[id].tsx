@@ -1,4 +1,4 @@
-import { ORDER_STATUS_LABEL, PAYMENT_LABEL, PAYMENT_STATUS_LABEL, rupees, upiLink, type OrderStatus, type PaymentMethod, type PaymentStatus } from "@abh/core";
+import { awaitingPayment, orderStageLabel, PAYMENT_LABEL, PAYMENT_STATUS_LABEL, rupees, upiLink, type OrderStatus, type PaymentMethod, type PaymentStatus } from "@abh/core";
 import * as Linking from "expo-linking";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
@@ -32,7 +32,7 @@ export default function OrderScreen() {
   if (!o) return <View style={ui.screen}><Empty title="Order not found" /></View>;
   const a = o.shipping_address as Addr;
   const method = o.payment_method as PaymentMethod;
-  const unpaid = o.payment_status === "pending" && o.status !== "cancelled";
+  const unpaid = awaitingPayment(o);
   const upi = data.data?.settings?.upi_id;
 
   const cancel = () =>
@@ -53,23 +53,25 @@ export default function OrderScreen() {
 
   return (
     <ScrollView style={ui.screen} contentContainerStyle={ui.content}>
-      {placed && <Text style={[ui.card, ui.text]}>Thank you! Your order {o.number} is placed.</Text>}
+      {placed && !unpaid && <Text style={[ui.card, ui.text]}>Thank you! Your order {o.number} is placed.</Text>}
       <View style={ui.between}>
         <Text style={ui.h1}>{o.number}</Text>
-        <Text style={ui.muted}>{ORDER_STATUS_LABEL[o.status as OrderStatus]}</Text>
+        <Text style={ui.muted}>{orderStageLabel(o)}</Text>
       </View>
       <Text style={ui.text}>{PAYMENT_LABEL[method]} · {o.status === "cancelled" ? "—" : PAYMENT_STATUS_LABEL[o.payment_status as PaymentStatus]}</Text>
       {o.tracking ? <Text style={[ui.card, ui.text]}>Tracking: {o.tracking}</Text> : null}
       {unpaid && method === "razorpay" && (
         <View style={[ui.card, { gap: 8 }]}>
-          <Text style={ui.text}>Waiting for payment. Please pay within 60 minutes of ordering to keep your pieces.</Text>
+          <Text style={ui.h2}>Pay to place your order</Text>
+          <Text style={ui.muted}>Your pieces are kept for 60 minutes. The order is placed as soon as the payment goes through.</Text>
           <Button title={`Pay ${rupees(o.total)} now`} onPress={() => Linking.openURL(payUrl(o.id, o.pay_token))} />
         </View>
       )}
       {unpaid && method === "upi_manual" && upi && (
         <View style={[ui.card, { gap: 8 }]}>
-          <Text style={ui.text}>Please pay {rupees(o.total)} to our UPI ID {upi} and write {o.number} in the note.</Text>
-          <Button title="Open UPI app" onPress={() => Linking.openURL(upiLink(upi, data.data?.settings?.store_name ?? "Abharanam", Number(o.total), o.number))} />
+          <Text style={ui.h2}>Pay {rupees(o.total)} to place your order</Text>
+          <Text style={ui.muted}>Or pay to UPI ID {upi} with note {o.number}. We check the payment and confirm your order, usually within a few hours.</Text>
+          <Button title="Pay with a UPI app" onPress={() => Linking.openURL(upiLink(upi, data.data?.settings?.store_name ?? "Abharanam", Number(o.total), o.number))} />
         </View>
       )}
       <View style={ui.card}>

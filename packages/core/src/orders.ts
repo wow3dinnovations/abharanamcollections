@@ -45,6 +45,19 @@ export function shippingFor(subtotal: number, fee: number, freeAbove: number): n
 
 /** UPI deep link that opens the customer's UPI app with the amount filled in. */
 export function upiLink(upiId: string, payee: string, amount: number, note: string): string {
-  const q = new URLSearchParams({ pa: upiId.trim(), pn: payee, am: amount.toFixed(2), cu: "INR", tn: note });
-  return `upi://pay?${q.toString()}`;
+  // encodeURIComponent, not URLSearchParams: some UPI apps show "+" instead of spaces, or reject "%40" in the UPI ID.
+  const q = { pa: upiId.trim(), pn: payee, am: amount.toFixed(2), cu: "INR", tn: note };
+  return `upi://pay?${Object.entries(q).map(([k, v]) => `${k}=${encodeURIComponent(v).replace(/%40/g, "@")}`).join("&")}`;
+}
+
+type OrderState = { status: string; payment_status: string; payment_method: string };
+
+/** An online-payment order that is not paid yet is not a real order: show it as waiting for payment. */
+export function awaitingPayment(o: OrderState): boolean {
+  return o.status === "placed" && o.payment_method !== "cod" && o.payment_status !== "paid";
+}
+
+/** One status word for lists: "Awaiting payment" until paid, then the order status. */
+export function orderStageLabel(o: OrderState): string {
+  return awaitingPayment(o) ? "Awaiting payment" : ORDER_STATUS_LABEL[o.status as OrderStatus] ?? o.status;
 }

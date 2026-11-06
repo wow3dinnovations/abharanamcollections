@@ -1,4 +1,4 @@
-import { ORDER_STATUS_LABEL, PAYMENT_STATUS_LABEL, rupees, type OrderStatus, type PaymentStatus } from "@abh/core";
+import { awaitingPayment, orderStageLabel, PAYMENT_STATUS_LABEL, rupees, type PaymentStatus } from "@abh/core";
 import { router } from "expo-router";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { Button, Empty, Loading } from "@/components/ui";
@@ -13,7 +13,7 @@ export default function Orders() {
     if (!session) return [];
     const { data: rows } = await supabase
       .from("orders")
-      .select("id, number, status, payment_status, total, created_at, order_items(name, quantity)")
+      .select("id, number, status, payment_method, payment_status, total, created_at, order_items(name, quantity)")
       .order("created_at", { ascending: false })
       .limit(50);
     return rows ?? [];
@@ -30,7 +30,7 @@ export default function Orders() {
         <Pressable key={o.id} style={ui.card} onPress={() => router.push({ pathname: "/orders/[id]", params: { id: o.id } })}>
           <View style={ui.between}>
             <Text style={[ui.text, { fontWeight: "600" }]}>{o.number}</Text>
-            <Text style={ui.muted}>{ORDER_STATUS_LABEL[o.status as OrderStatus]}{o.status !== "cancelled" ? ` · ${PAYMENT_STATUS_LABEL[o.payment_status as PaymentStatus]}` : ""}</Text>
+            <Text style={ui.muted}>{orderStageLabel(o)}{o.status !== "cancelled" && !awaitingPayment(o) ? ` · ${PAYMENT_STATUS_LABEL[o.payment_status as PaymentStatus]}` : ""}</Text>
           </View>
           <Text style={ui.muted}>{new Date(o.created_at).toLocaleDateString("en-IN")} · {rupees(o.total)}</Text>
           <Text style={ui.text} numberOfLines={2}>{o.order_items.map((i) => `${i.name} ×${i.quantity}`).join(", ")}</Text>

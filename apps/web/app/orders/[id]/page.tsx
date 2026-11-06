@@ -1,7 +1,8 @@
-import { ORDER_STATUS_LABEL, PAYMENT_LABEL, PAYMENT_STATUS_LABEL, rupees, upiLink, type OrderStatus, type PaymentMethod, type PaymentStatus } from "@abh/core";
+import { awaitingPayment, ORDER_STATUS_LABEL, PAYMENT_LABEL, PAYMENT_STATUS_LABEL, rupees, upiLink, type OrderStatus, type PaymentMethod, type PaymentStatus } from "@abh/core";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import QRCode from "qrcode";
 import { ProductImage } from "@/components/ProductImage";
 import { getSettings } from "@/lib/catalog";
 import { ORDER_COLUMNS, STATUS_TONE, type ShippingAddress } from "@/lib/orders";
@@ -26,26 +27,32 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
   const a = o.shipping_address as ShippingAddress;
   const method = o.payment_method as PaymentMethod;
   const step = STEPS.indexOf(o.status as OrderStatus);
-  const unpaid = o.payment_status === "pending" && o.status !== "cancelled";
+  const waiting = awaitingPayment(o);
+  const upi = waiting && method === "upi_manual" && settings?.upi_id ? upiLink(settings.upi_id, settings.store_name, Number(o.total), o.number) : null;
+  const qr = upi ? await QRCode.toString(upi, { type: "svg", margin: 1, color: { dark: "#3b0d12", light: "#ffffff" } }) : null;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      {sp.placed && (
+      {sp.placed && !waiting && (
         <div className="rounded-xl border border-green-300 bg-green-50 p-5 text-center">
           <p className="font-display text-3xl font-semibold text-maroon">Thank you!</p>
-          <p className="mt-1">Your order <strong>{o.number}</strong> is placed.{method === "upi_manual" ? " Please pay by UPI below." : " We'll call or WhatsApp you to confirm."}</p>
+          <p className="mt-1">Your order <strong>{o.number}</strong> is placed.{method === "cod" ? " We'll call or WhatsApp you to confirm." : " We received your payment."}</p>
         </div>
       )}
       {sp.error && <p className="rounded bg-red-50 p-3 text-sm text-red-800">{sp.error}</p>}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-3xl font-semibold text-maroon">Order {o.number}</h1>
         <span className="flex gap-1 text-xs">
-          <span className={`rounded-full px-2 py-0.5 ${STATUS_TONE[o.status]}`}>{ORDER_STATUS_LABEL[o.status as OrderStatus]}</span>
-          {o.status !== "cancelled" && <span className={`rounded-full px-2 py-0.5 ${STATUS_TONE[o.payment_status]}`}>{PAYMENT_STATUS_LABEL[o.payment_status as PaymentStatus]}</span>}
+          {waiting ? (
+            <span className={`rounded-full px-2 py-0.5 ${STATUS_TONE.pending}`}>Awaiting payment</span>
+          ) : (
+            <span className={`rounded-full px-2 py-0.5 ${STATUS_TONE[o.status]}`}>{ORDER_STATUS_LABEL[o.status as OrderStatus]}</span>
+          )}
+          {o.status !== "cancelled" && !waiting && <span className={`rounded-full px-2 py-0.5 ${STATUS_TONE[o.payment_status]}`}>{PAYMENT_STATUS_LABEL[o.payment_status as PaymentStatus]}</span>}
         </span>
       </div>
 
-      {o.status !== "cancelled" && (
+      {o.status !== "cancelled" && !waiting && (
         <ol className="grid grid-cols-5 gap-1 text-center text-[11px]">
           {STEPS.map((s, i) => (
             <li key={s} className={`rounded py-1 ${i <= step ? "bg-maroon text-white" : "bg-cream text-muted"}`}>{ORDER_STATUS_LABEL[s]}</li>
@@ -54,16 +61,27 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
       )}
       {o.tracking && <p className="rounded-xl border border-cream bg-white p-4 text-sm"><strong>Tracking:</strong> {o.tracking}</p>}
 
-      {unpaid && method === "razorpay" && (
-        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm">
-          <p>This order is waiting for payment. Please pay within 60 minutes of ordering to keep your pieces.</p>
-          <Link href={`/pay/${o.id}?t=${o.pay_token}`} className="mt-3 inline-block rounded-full bg-maroon px-5 py-2 font-semibold text-white">Pay {rupees(o.total)} now</Link>
+      {waiting && method === "razorpay" && (
+        <div className="rounded-xl border border-maroon/40 bg-white p-5 text-center">
+          <p className="font-display text-2xl font-semibold text-maroon">Pay to place your order</p>
+          <p className="mt-1 text-sm text-muted">Your pieces are kept for 60 minutes. The order is placed as soon as the payment goes through.</p>
+          <Link href={`/pay/${o.id}?t=${o.pay_token}`} className="mt-4 inline-block rounded-full bg-maroon px-8 py-3 font-semibold text-white">Pay {rupees(o.total)} now</Link>
         </div>
       )}
-      {unpaid && method === "upi_manual" && settings?.upi_id && (
-        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm">
-          <p>Please pay <strong>{rupees(o.total)}</strong> to our UPI ID <strong className="select-all">{settings.upi_id}</strong> and write <strong>{o.number}</strong> in the note. We confirm the order when we see the payment.</p>
-          <a href={upiLink(settings.upi_id, settings.store_name, Number(o.total), o.number)} className="mt-3 inline-block rounded-full bg-maroon px-5 py-2 font-semibold text-white md:hidden">Open UPI app</a>
+      {upi && settings?.upi_id && (
+        <div className="rounded-xl border border-maroon/40 bg-white p-5 text-center">
+          <p className="font-display text-2xl font-semibold text-maroon">Pay {rupees(o.total)} to place your order</p>
+          <a href={upi} className="mt-4 inline-block rounded-full bg-maroon px-8 py-3 font-semibold text-white md:hidden">Pay with a UPI app</a>
+          {qr && (
+            <div className="mt-4 hidden md:block">
+              <p className="text-sm">Scan with any UPI app (Google Pay, PhonePe, Paytm…)</p>
+              <div className="mx-auto mt-2 w-52" dangerouslySetInnerHTML={{ __html: qr }} />
+            </div>
+          )}
+          <p className="mt-4 text-sm">
+            Or pay to UPI ID <strong className="select-all">{settings.upi_id}</strong> with note <strong>{o.number}</strong>.
+          </p>
+          <p className="mt-2 text-xs text-muted">We check the payment and confirm your order, usually within a few hours. Your pieces are kept for you.</p>
         </div>
       )}
 

@@ -8,8 +8,14 @@ Payment options, each with its own switch in **Admin → Settings → Online ord
 | Option | What happens | Needs |
 |---|---|---|
 | **Pay online with Razorpay** | UPI apps, cards, netbanking. The order is marked paid automatically. | A Razorpay account and 4 secrets (below) |
-| **UPI to our account** | After ordering, the customer pays your UPI ID. You check the payment and mark it paid in Admin → Orders. | Your UPI ID |
+| **UPI to our account** | Right after checkout the customer gets a QR code (computer) or a "Pay with a UPI app" button (phone) for the exact amount. You check your bank app and mark it paid in Admin → Orders. | Your UPI ID |
 | **Cash on delivery** | Paid when the parcel arrives. | Nothing |
+
+An online order shows as **Awaiting payment** until it is paid. It counts as a new order (Admin → Orders → New)
+only after payment, like Amazon. Cash-on-delivery orders count straight away.
+
+Tip: Razorpay also takes UPI apps and confirms payment by itself, so once Razorpay works you can switch off
+**UPI to our account** (and Cash on delivery, if you only want prepaid orders).
 
 How it is kept safe:
 - Prices, delivery charge and stock are worked out by the database, never taken from the customer's browser.

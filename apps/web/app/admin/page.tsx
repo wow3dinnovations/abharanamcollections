@@ -6,7 +6,7 @@ export default async function AdminHome() {
   const supabase = await createClient();
   const count = async (q: PromiseLike<{ count: number | null }>) => (await q).count ?? 0;
   const [newOrders, toShip, newEnq, openEnq, products, visible, soldOut, noPhoto, settings] = await Promise.all([
-    count(supabase.from("orders").select("id", { count: "exact", head: true }).eq("status", "placed")),
+    count(supabase.from("orders").select("id", { count: "exact", head: true }).eq("status", "placed").or("payment_status.eq.paid,payment_method.eq.cod")),
     count(supabase.from("orders").select("id", { count: "exact", head: true }).in("status", ["confirmed", "packed"])),
     count(supabase.from("enquiries").select("id", { count: "exact", head: true }).eq("status", "new")),
     count(supabase.from("enquiries").select("id", { count: "exact", head: true }).in("status", ["new", "contacted", "confirmed"])),

@@ -71,7 +71,7 @@ describe("enquiry bag", () => {
   });
 });
 
-import { isPincode, shippingFor, upiLink } from "./orders";
+import { awaitingPayment, isPincode, orderStageLabel, shippingFor, upiLink } from "./orders";
 describe("orders", () => {
   it("checks PIN codes", () => {
     expect(isPincode("518501")).toBe(true);
@@ -84,6 +84,11 @@ describe("orders", () => {
     expect(shippingFor(9999, 80, 0)).toBe(80);
   });
   it("makes a UPI link", () => {
-    expect(upiLink("shop@upi", "Abharanam", 1500, "ABH-1001")).toBe("upi://pay?pa=shop%40upi&pn=Abharanam&am=1500.00&cu=INR&tn=ABH-1001");
+    expect(upiLink("shop@upi", "Abharanam", 1500, "ABH-1001")).toBe("upi://pay?pa=shop@upi&pn=Abharanam&am=1500.00&cu=INR&tn=ABH-1001");
+    expect(upiLink("shop@upi", "Abharanam Collections", 10, "x")).toContain("pn=Abharanam%20Collections");
+    expect(awaitingPayment({ status: "placed", payment_status: "pending", payment_method: "razorpay" })).toBe(true);
+    expect(awaitingPayment({ status: "placed", payment_status: "pending", payment_method: "cod" })).toBe(false);
+    expect(orderStageLabel({ status: "placed", payment_status: "paid", payment_method: "upi_manual" })).toBe("Order placed");
+    expect(orderStageLabel({ status: "placed", payment_status: "pending", payment_method: "upi_manual" })).toBe("Awaiting payment");
   });
 });

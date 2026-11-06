@@ -1,11 +1,11 @@
-import { ORDER_STATUS_LABEL, PAYMENT_LABEL, PAYMENT_STATUS_LABEL, rupees, type OrderStatus, type PaymentMethod, type PaymentStatus } from "@abh/core";
+import { awaitingPayment, orderStageLabel, PAYMENT_LABEL, PAYMENT_STATUS_LABEL, rupees, type OrderStatus, type PaymentMethod, type PaymentStatus } from "@abh/core";
 import Link from "next/link";
 import { PageHeader, Table, Td } from "@/components/admin/ui";
 import { requireAdmin } from "@/lib/admin";
 import { STATUS_TONE, type ShippingAddress } from "@/lib/orders";
 
 const FILTERS: [string, string][] = [
-  ["", "All"], ["placed", "New"], ["to_ship", "To pack & ship"], ["shipped", "Shipped"], ["delivered", "Delivered"], ["unpaid", "Payment pending"], ["cancelled", "Cancelled"],
+  ["", "All"], ["placed", "New"], ["to_ship", "To pack & ship"], ["shipped", "Shipped"], ["delivered", "Delivered"], ["unpaid", "Awaiting payment"], ["cancelled", "Cancelled"],
 ];
 
 export default async function AdminOrders({ searchParams }: { searchParams: Promise<{ status?: string; q?: string }> }) {
@@ -17,7 +17,8 @@ export default async function AdminOrders({ searchParams }: { searchParams: Prom
     .order("created_at", { ascending: false })
     .limit(200);
   if (status === "to_ship") query = query.in("status", ["confirmed", "packed"]);
-  else if (status === "unpaid") query = query.eq("payment_status", "pending").neq("status", "cancelled");
+  else if (status === "placed") query = query.eq("status", "placed").or("payment_status.eq.paid,payment_method.eq.cod");
+  else if (status === "unpaid") query = query.eq("status", "placed").eq("payment_status", "pending").neq("payment_method", "cod");
   else if (status) query = query.eq("status", status as OrderStatus);
   const term = q.replace(/[%_,()\\]/g, " ").trim();
   if (term) query = query.or(`number.ilike.%${term}%,email.ilike.%${term}%,shipping_address->>phone.ilike.%${term}%,shipping_address->>full_name.ilike.%${term}%`);
@@ -52,7 +53,7 @@ export default async function AdminOrders({ searchParams }: { searchParams: Prom
                 <span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_TONE[o.payment_status]}`}>{PAYMENT_STATUS_LABEL[o.payment_status as PaymentStatus]}</span>
                 <br /><span className="text-xs text-muted">{PAYMENT_LABEL[o.payment_method as PaymentMethod].split(" (")[0]}</span>
               </Td>
-              <Td><span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_TONE[o.status]}`}>{ORDER_STATUS_LABEL[o.status as OrderStatus]}</span></Td>
+              <Td><span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_TONE[awaitingPayment(o) ? "pending" : o.status]}`}>{orderStageLabel(o)}</span></Td>
             </tr>
           );
         })}

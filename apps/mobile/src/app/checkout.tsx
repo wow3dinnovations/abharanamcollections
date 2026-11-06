@@ -1,4 +1,4 @@
-import { INDIAN_STATES, PAYMENT_LABEL, isPincode, normaliseIndianMobile, rupees, shippingFor, type PaymentMethod } from "@abh/core";
+import { INDIAN_STATES, PAYMENT_LABEL, isPincode, normaliseIndianMobile, rupees, shippingFor, upiLink, type PaymentMethod } from "@abh/core";
 import * as Linking from "expo-linking";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
@@ -15,7 +15,7 @@ import { useLoad } from "@/lib/useLoad";
 type Address = { full_name: string; phone: string; line1: string; line2: string; city: string; state: string; pincode: string };
 const HINT: Record<PaymentMethod, string> = {
   razorpay: "Pay now with any UPI app, card or netbanking (secure Razorpay page).",
-  upi_manual: "Pay our UPI ID after placing the order.",
+  upi_manual: "On the next screen, open your UPI app to pay. We confirm the order once we see the payment.",
   cod: "Pay in cash when the parcel arrives.",
 };
 
@@ -103,6 +103,7 @@ export default function Checkout() {
     bag.clear();
     router.replace({ pathname: "/orders/[id]", params: { id: row.id, placed: "1" } });
     if (method === "razorpay") Linking.openURL(payUrl(row.id, row.pay_token));
+    if (method === "upi_manual" && s?.upi_id) Linking.openURL(upiLink(s.upi_id, s.store_name, Number(row.total), row.number)).catch(() => {});
   }
 
   const field = (key: keyof Address, label: string, extra: Partial<React.ComponentProps<typeof TextInput>> = {}) => (
@@ -161,7 +162,7 @@ export default function Checkout() {
           <View style={ui.between}><Text style={ui.h2}>Total</Text><Text style={[ui.price, { fontSize: 20 }]}>{rupees(subtotal + shipping)}</Text></View>
         </View>
         {error && <Text style={ui.error}>{error}</Text>}
-        <Button title={method === "razorpay" ? `Place order & pay ${rupees(subtotal + shipping)}` : "Place order"} loading={busy} onPress={place} />
+        <Button title={method === "cod" ? "Place order" : `Continue to pay ${rupees(subtotal + shipping)}`} loading={busy} onPress={place} />
       </ScrollView>
     </KeyboardAvoidingView>
   );
