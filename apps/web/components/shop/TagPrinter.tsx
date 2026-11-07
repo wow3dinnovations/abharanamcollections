@@ -26,7 +26,7 @@ export function TagPrinter({ initial, width, height, brand }: { initial: TagItem
 
   const search = () =>
     start(async () => {
-      const r = await findForBill(term, "");
+      const r = await findForBill(term);
       if (r.length === 1) add(r[0]!);
       else setFound(r);
       if (!r.length) setMsg(`Nothing found for "${term}".`);

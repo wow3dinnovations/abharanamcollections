@@ -568,6 +568,40 @@ export type Database = {
         };
         Relationships: [];
       };
+      shop_customers: {
+        Row: {
+          address: string;
+          created_at: string;
+          email: string;
+          id: string;
+          name: string;
+          notes: string;
+          phone: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          address?: string;
+          created_at?: string;
+          email?: string;
+          id?: string;
+          name?: string;
+          notes?: string;
+          phone: string;
+          updated_at?: string;
+        };
+        Update: {
+          address?: string;
+          created_at?: string;
+          email?: string;
+          id?: string;
+          name?: string;
+          notes?: string;
+          phone?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       shop_locations: {
         Row: {
           created_at: string;
@@ -722,9 +756,12 @@ export type Database = {
         Row: {
           created_at: string;
           created_by: string | null;
+          customer_id: string | null;
           customer_name: string;
           customer_phone: string;
           discount: number;
+          discount_type: string;
+          discount_value: number;
           id: string;
           location_id: string | null;
           notes: string;
@@ -738,9 +775,12 @@ export type Database = {
         Insert: {
           created_at?: string;
           created_by?: string | null;
+          customer_id?: string | null;
           customer_name?: string;
           customer_phone?: string;
           discount?: number;
+          discount_type?: string;
+          discount_value?: number;
           id?: string;
           location_id?: string | null;
           notes?: string;
@@ -753,9 +793,12 @@ export type Database = {
         Update: {
           created_at?: string;
           created_by?: string | null;
+          customer_id?: string | null;
           customer_name?: string;
           customer_phone?: string;
           discount?: number;
+          discount_type?: string;
+          discount_value?: number;
           id?: string;
           location_id?: string | null;
           notes?: string;
@@ -766,6 +809,13 @@ export type Database = {
           total?: number;
         };
         Relationships: [
+          {
+            foreignKeyName: "shop_sales_customer_id_fkey";
+            columns: ["customer_id"];
+            isOneToOne: false;
+            referencedRelation: "shop_customers";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "shop_sales_location_id_fkey";
             columns: ["location_id"];
@@ -1176,6 +1226,7 @@ export type Database = {
       release_unpaid_orders: { Args: Record<PropertyKey, never>; Returns: number };
       shop_bump_code: { Args: { p_code: string }; Returns: string };
       shop_cancel_sale: { Args: { p_sale: string }; Returns: undefined };
+      shop_clean_phone: { Args: { p: string }; Returns: string };
       shop_create_sale: { Args: { p: Json }; Returns: Json };
       shop_import: { Args: { p: Json }; Returns: Json };
       shop_next_barcode: { Args: Record<PropertyKey, never>; Returns: string };

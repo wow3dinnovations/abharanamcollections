@@ -60,7 +60,7 @@ export default async function BillPage({ params, searchParams }: { params: Promi
         </table>
         <dl className="mt-2 grid grid-cols-2 border-t border-dashed border-stone-400 pt-1 text-xs">
           <dt>Subtotal</dt><dd className="text-right">{rupees(s.subtotal)}</dd>
-          {Number(s.discount) > 0 && <><dt>Discount</dt><dd className="text-right">− {rupees(s.discount)}</dd></>}
+          {Number(s.discount) > 0 && <><dt>Discount{s.discount_type === "percent" ? ` (${Number(s.discount_value)}%)` : ""}</dt><dd className="text-right">− {rupees(s.discount)}</dd></>}
           <dt className="text-base font-bold">Total</dt><dd className="text-right text-base font-bold">{rupees(s.total)}</dd>
           <dt>Paid by</dt><dd className="text-right">{PAY[s.payment_method] ?? s.payment_method}</dd>
         </dl>
