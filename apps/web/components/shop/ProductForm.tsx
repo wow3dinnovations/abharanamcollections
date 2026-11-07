@@ -14,6 +14,8 @@ export type ProductFormProps = {
   vendors: Option[];
   locations: Option[];
   defaultMultiplier: number;
+  /** Months of guarantee a "G" product gets (from the code settings). */
+  guaranteeMonths: number;
   initial?: ProductInput & { id: string };
 };
 
@@ -25,7 +27,7 @@ function blank(multiplier: number): ProductInput {
     sku: "", name: "", category_id: "", subcategory_id: "", vendor_id: "", location_id: "",
     purchase_rate: "", multiplier: String(multiplier), price: "", mrp: "", opening_qty: "1",
     purchase_date: today(), invoice_no: "", rack: "", barcode: "", design_number: "", size: "", colour: "",
-    material: "", collection: "", description: "", is_active: true,
+    material: "", collection: "", description: "", is_active: true, guarantee_months: "0", code_serial: null,
   };
 }
 
@@ -33,6 +35,7 @@ const MATCH_TEXT: Record<string, string> = {
   category_vendor_location: "same category, vendor and location",
   category_location: "same category and location (first one from this vendor)",
   new: "first product in this category at this location",
+  scheme: "from the code scheme (Vendors & settings)",
 };
 
 export function ProductForm(props: ProductFormProps) {
@@ -77,18 +80,23 @@ export function ProductForm(props: ProductFormProps) {
     } catch {}
   }, [isNew, f.vendor_id, f.location_id, f.category_id, f.multiplier]);
 
-  // Next product code for this category + vendor + location.
+  // Next product code for this category + vendor + location (+ guarantee letter).
   const [codeTick, setCodeTick] = useState(0);
+  const hasGuarantee = Number(f.guarantee_months) > 0;
   useEffect(() => {
-    if (skuTouched || !f.category_id) return;
+    if (skuTouched || (!f.category_id && !f.vendor_id)) return;
     let live = true;
-    suggestCode(f.category_id, f.vendor_id, f.location_id).then((r) => {
+    suggestCode(f.category_id, f.vendor_id, f.location_id, hasGuarantee).then((r) => {
       if (!live) return;
-      setF((old) => ({ ...old, sku: r.sku }));
-      setHint(r.based_on ? `Follows ${r.based_on}: ${MATCH_TEXT[r.match] ?? ""}` : r.sku ? (MATCH_TEXT.new ?? "") : "");
+      setF((old) => ({ ...old, sku: r.sku, code_serial: r.serial }));
+      setHint(
+        r.match === "scheme"
+          ? `Serial ${r.serial}, ${MATCH_TEXT.scheme}`
+          : r.based_on ? `Follows ${r.based_on}: ${MATCH_TEXT[r.match] ?? ""}` : r.sku ? (MATCH_TEXT.new ?? "") : "",
+      );
     });
     return () => { live = false; };
-  }, [f.category_id, f.vendor_id, f.location_id, skuTouched, codeTick]);
+  }, [f.category_id, f.vendor_id, f.location_id, hasGuarantee, skuTouched, codeTick]);
 
   // Selling price = purchase rate x multiplier (until the price is typed by hand).
   const auto = (() => {
@@ -102,7 +110,7 @@ export function ProductForm(props: ProductFormProps) {
   function submit(mode: "open" | "next") {
     setError("");
     start(async () => {
-      const res = await saveProduct({ ...f, id: initial?.id });
+      const res = await saveProduct({ ...f, id: initial?.id, code_serial: skuTouched ? null : f.code_serial });
       if (!res.ok) {
         setError(res.error);
         return;
@@ -264,6 +272,14 @@ export function ProductForm(props: ProductFormProps) {
         <Field label="Barcode (blank = automatic)">
           <Input value={f.barcode} onChange={(e) => set("barcode", e.target.value.trim())} className="font-mono" />
         </Field>
+        <label className="flex items-center gap-2 self-end pb-2 text-sm">
+          <input
+            type="checkbox"
+            checked={hasGuarantee}
+            onChange={(e) => set("guarantee_months", e.target.checked ? String(props.guaranteeMonths || 6) : "0")}
+          />
+          Manufacturer guarantee{hasGuarantee ? ` (${f.guarantee_months} months)` : ""}
+        </label>
       </fieldset>
 
       <details className="rounded-xl border border-cream bg-white p-4" open={!isNew}>

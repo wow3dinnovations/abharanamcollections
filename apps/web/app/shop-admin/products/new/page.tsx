@@ -22,6 +22,7 @@ export default async function NewShopProduct() {
         vendors={m.vendors}
         locations={m.locations}
         defaultMultiplier={Number(m.settings.default_multiplier)}
+        guaranteeMonths={Number(m.settings.guarantee_months ?? 6)}
       />
     </div>
   );

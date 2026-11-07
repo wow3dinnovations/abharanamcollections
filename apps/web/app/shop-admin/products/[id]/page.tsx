@@ -42,13 +42,14 @@ export default async function ShopProduct({ params }: { params: Promise<{ id: st
           vendors={m.vendors}
           locations={m.locations}
           defaultMultiplier={Number(m.settings.default_multiplier)}
+          guaranteeMonths={Number(m.settings.guarantee_months ?? 6)}
           initial={{
             id: p.id, sku: p.sku, name: p.name, category_id: s(p.category_id), subcategory_id: s(p.subcategory_id),
             vendor_id: s(sp?.vendor_id), location_id: s(sp?.location_id), purchase_rate: s(sp?.purchase_rate),
             multiplier: s(sp?.multiplier ?? m.settings.default_multiplier), price: s(p.price), mrp: s(p.mrp),
             purchase_date: s(sp?.purchase_date), invoice_no: s(sp?.invoice_no), rack: s(sp?.rack), barcode: s(sp?.barcode),
             design_number: p.design_number, size: p.size, colour: p.colour, material: p.material, collection: p.collection,
-            description: p.description, is_active: p.is_active,
+            description: p.description, is_active: p.is_active, guarantee_months: s(sp?.guarantee_months ?? 0),
           }}
         />
         <div className="space-y-4">

@@ -22,7 +22,7 @@ export default async function TagsPage({ searchParams }: { searchParams: Promise
   return (
     <div>
       <PageHeader title="Print tags" />
-      <TagPrinter initial={items} width={Number(m.settings.tag_width_mm)} height={Number(m.settings.tag_height_mm)} brand={store.name} />
+      <TagPrinter initial={items} width={Number(m.settings.tag_width_mm)} height={Number(m.settings.tag_height_mm)} brand={store.name} layout={m.settings.tag_layout} />
     </div>
   );
 }
