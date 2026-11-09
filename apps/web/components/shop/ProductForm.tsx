@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { saveProduct, suggestCode, type ProductInput } from "@/app/shop-admin/actions";
 import { Button, Field, Input, Select, Textarea } from "@/components/admin/ui";
 import { uploadProductPhoto } from "@/lib/shop/photo";
+import { BANGLE_SIZES, isBangleCategory } from "@/lib/shop/tags";
 
 type Option = { id: string; name: string; is_active?: boolean };
 export type ProductFormProps = {
@@ -17,6 +18,8 @@ export type ProductFormProps = {
   /** Months of guarantee a "G" product gets (from the code settings). */
   guaranteeMonths: number;
   initial?: ProductInput & { id: string };
+  /** New product with this code already filled in (from the dashboard's code lookup). */
+  initialSku?: string;
 };
 
 const STICKY = "abh.shop.add-product"; // remembered on this device: vendor, location, category, multiplier
@@ -42,8 +45,8 @@ export function ProductForm(props: ProductFormProps) {
   const { initial } = props;
   const isNew = !initial;
   const router = useRouter();
-  const [f, setF] = useState<ProductInput>(initial ?? blank(props.defaultMultiplier));
-  const [skuTouched, setSkuTouched] = useState(!isNew);
+  const [f, setF] = useState<ProductInput>(initial ?? { ...blank(props.defaultMultiplier), sku: props.initialSku ?? "" });
+  const [skuTouched, setSkuTouched] = useState(!isNew || !!props.initialSku);
   const [priceTouched, setPriceTouched] = useState(!isNew);
   const [hint, setHint] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
@@ -138,6 +141,8 @@ export function ProductForm(props: ProductFormProps) {
         category_id: old.category_id, subcategory_id: old.subcategory_id, vendor_id: old.vendor_id,
         location_id: old.location_id, multiplier: old.multiplier, name: old.name, purchase_date: old.purchase_date,
         invoice_no: old.invoice_no, collection: old.collection, material: old.material,
+        // Bangles usually come in sets of one size: keep it for the next piece.
+        size: bangle ? old.size : "",
       }));
       setPhoto(null);
       if (photoInput.current) photoInput.current.value = "";
@@ -149,6 +154,7 @@ export function ProductForm(props: ProductFormProps) {
   }
 
   const subs = props.subcategories.filter((s) => s.category_id === f.category_id);
+  const bangle = isBangleCategory(props.categories.find((c) => c.id === f.category_id)?.name);
   const activeOnly = (list: Option[], keep: string) => list.filter((o) => o.is_active !== false || o.id === keep);
 
   return (
@@ -230,6 +236,15 @@ export function ProductForm(props: ProductFormProps) {
             {subs.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </Select>
         </Field>
+        {bangle && (
+          <Field label="Bangle size (printed on the tag)">
+            <Select value={f.size} onChange={(e) => set("size", e.target.value)} className="font-medium">
+              <option value="">Choose size…</option>
+              {BANGLE_SIZES.map((z) => <option key={z} value={z}>{z}</option>)}
+              {f.size && !BANGLE_SIZES.includes(f.size) && <option value={f.size}>{f.size}</option>}
+            </Select>
+          </Field>
+        )}
       </fieldset>
 
       <fieldset className="grid gap-3 rounded-xl border border-cream bg-white p-4 sm:grid-cols-4">
@@ -289,7 +304,7 @@ export function ProductForm(props: ProductFormProps) {
             <input ref={photoInput} type="file" accept="image/*" capture="environment" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} className="text-sm" />
           </Field>
           <Field label="Design number"><Input value={f.design_number} onChange={(e) => set("design_number", e.target.value)} /></Field>
-          <Field label="Size"><Input value={f.size} onChange={(e) => set("size", e.target.value)} /></Field>
+          {!bangle && <Field label="Size (printed on the tag)"><Input value={f.size} onChange={(e) => set("size", e.target.value)} /></Field>}
           <Field label="Colour"><Input value={f.colour} onChange={(e) => set("colour", e.target.value)} /></Field>
           <Field label="Material"><Input value={f.material} onChange={(e) => set("material", e.target.value)} /></Field>
           <Field label="Collection"><Input value={f.collection} onChange={(e) => set("collection", e.target.value)} placeholder="Bridal, Temple…" /></Field>

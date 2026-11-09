@@ -568,6 +568,51 @@ export type Database = {
         };
         Relationships: [];
       };
+      shop_expenses: {
+        Row: {
+          amount: number;
+          category: string;
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          location_id: string | null;
+          note: string;
+          paid_by: string;
+          spent_on: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          amount: number;
+          category: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          location_id?: string | null;
+          note?: string;
+          paid_by?: string;
+          spent_on?: string;
+        };
+        Update: {
+          amount?: number;
+          category?: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          location_id?: string | null;
+          note?: string;
+          paid_by?: string;
+          spent_on?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "shop_expenses_location_id_fkey";
+            columns: ["location_id"];
+            isOneToOne: false;
+            referencedRelation: "shop_locations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       shop_customers: {
         Row: {
           address: string;
@@ -702,20 +747,136 @@ export type Database = {
           },
         ];
       };
+      shop_return_items: {
+        Row: {
+          amount: number;
+          cost: number;
+          id: number;
+          name: string;
+          price: number;
+          product_id: string | null;
+          qty: number;
+          return_id: string;
+          sale_item_id: number;
+          sku: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          amount: number;
+          cost?: number;
+          id?: never;
+          name: string;
+          price: number;
+          product_id?: string | null;
+          qty: number;
+          return_id: string;
+          sale_item_id: number;
+          sku: string;
+        };
+        Update: {
+          amount?: number;
+          cost?: number;
+          id?: never;
+          name?: string;
+          price?: number;
+          product_id?: string | null;
+          qty?: number;
+          return_id?: string;
+          sale_item_id?: number;
+          sku?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "shop_return_items_return_id_fkey";
+            columns: ["return_id"];
+            isOneToOne: false;
+            referencedRelation: "shop_returns";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      shop_returns: {
+        Row: {
+          amount: number;
+          created_at: string;
+          decided_at: string | null;
+          decided_by: string | null;
+          decision_note: string;
+          id: string;
+          kind: string;
+          location_id: string | null;
+          number: string;
+          reason: string;
+          requested_by: string | null;
+          sale_id: string;
+          status: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          amount?: number;
+          created_at?: string;
+          decided_at?: string | null;
+          decided_by?: string | null;
+          decision_note?: string;
+          id?: string;
+          kind: string;
+          location_id?: string | null;
+          number?: string;
+          reason?: string;
+          requested_by?: string | null;
+          sale_id: string;
+          status?: string;
+        };
+        Update: {
+          amount?: number;
+          created_at?: string;
+          decided_at?: string | null;
+          decided_by?: string | null;
+          decision_note?: string;
+          id?: string;
+          kind?: string;
+          location_id?: string | null;
+          number?: string;
+          reason?: string;
+          requested_by?: string | null;
+          sale_id?: string;
+          status?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "shop_returns_sale_id_fkey";
+            columns: ["sale_id"];
+            isOneToOne: false;
+            referencedRelation: "shop_sales";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "shop_returns_location_id_fkey";
+            columns: ["location_id"];
+            isOneToOne: false;
+            referencedRelation: "shop_locations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       shop_sale_items: {
         Row: {
+          cost: number;
           id: number;
           line_total: number;
           name: string;
           price: number;
           product_id: string | null;
           qty: number;
+          returned_qty: number;
           sale_id: string;
           sku: string;
         };
         ComputedFields: never;
         Insert: {
+          cost?: number;
           id?: never;
+          returned_qty?: number;
           line_total: number;
           name: string;
           price: number;
@@ -725,7 +886,9 @@ export type Database = {
           sku: string;
         };
         Update: {
+          cost?: number;
           id?: never;
+          returned_qty?: number;
           line_total?: number;
           name?: string;
           price?: number;
@@ -1287,6 +1450,11 @@ export type Database = {
         Args: { p_category: string; p_location?: string; p_vendor?: string };
         Returns: Json;
       };
+      shop_breakdown: { Args: { p_from: string; p_to: string }; Returns: Json };
+      shop_decide_return: { Args: { p_approve: boolean; p_note?: string; p_return: string }; Returns: undefined };
+      shop_report: { Args: { p_by?: string; p_from: string; p_to: string }; Returns: Json };
+      shop_request_return: { Args: { p: Json }; Returns: Json };
+      shop_vendor_report: { Args: { p_from: string; p_to: string }; Returns: Json };
       shop_require_admin: { Args: Record<PropertyKey, never>; Returns: undefined };
       shop_save_product: { Args: { p: Json }; Returns: string };
       shop_set_stock: {

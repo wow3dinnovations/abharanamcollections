@@ -2,6 +2,7 @@ import { PageHeader } from "@/components/admin/ui";
 import { TagPrinter } from "@/components/shop/TagPrinter";
 import { requireAdmin } from "@/lib/admin";
 import { getMasters, getStoreName } from "@/lib/shop/server";
+import { isBangleCategory } from "@/lib/shop/tags";
 
 export default async function TagsPage({ searchParams }: { searchParams: Promise<{ id?: string | string[] }> }) {
   const sp = await searchParams;
@@ -11,12 +12,13 @@ export default async function TagsPage({ searchParams }: { searchParams: Promise
     getMasters(),
     getStoreName(),
     ids.length
-      ? supabase.from("products").select("id, sku, name, price, stock_qty, shop_products(barcode)").in("id", ids)
+      ? supabase.from("products").select("id, sku, name, price, stock_qty, size, categories(name), shop_products(barcode)").in("id", ids)
       : Promise.resolve({ data: [] as never[] }),
   ]);
   const items = (rows.data ?? [])
-    .map((p: { id: string; sku: string; name: string; price: number; stock_qty: number; shop_products: { barcode: string | null } | null }) => ({
+    .map((p: { id: string; sku: string; name: string; price: number; stock_qty: number; size: string; categories: { name: string } | null; shop_products: { barcode: string | null } | null }) => ({
       id: p.id, sku: p.sku, name: p.name, price: Number(p.price), barcode: p.shop_products?.barcode ?? null, copies: 1,
+      size: p.size ?? "", bangle: isBangleCategory(p.categories?.name),
     }))
     .sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
   return (

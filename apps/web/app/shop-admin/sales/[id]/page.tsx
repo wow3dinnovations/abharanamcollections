@@ -2,23 +2,27 @@ import { rupees } from "@abh/core";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/admin/ui";
-import { BillTools, CancelBill } from "@/components/shop/BillTools";
+import { BillTools } from "@/components/shop/BillTools";
+import { ReturnRequest } from "@/components/shop/ReturnRequest";
 import { requireAdmin } from "@/lib/admin";
 import { getMasters, getStoreName, istDate } from "@/lib/shop/server";
-import { cancelSale } from "../../actions";
 
 const PAY: Record<string, string> = { cash: "Cash", upi: "UPI", card: "Card", other: "Other" };
 
 export default async function BillPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ print?: string }> }) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
   const { supabase } = await requireAdmin();
-  const [{ data: s }, items, store, m] = await Promise.all([
+  const [{ data: s }, items, store, m, rets] = await Promise.all([
     supabase.from("shop_sales").select("*, shop_locations(name)").eq("id", id).maybeSingle(),
     supabase.from("shop_sale_items").select("*").eq("sale_id", id).order("id"),
     getStoreName(),
     getMasters(),
+    supabase.from("shop_returns").select("id, number, kind, status, amount, reason, created_at, shop_return_items(sku, qty)").eq("sale_id", id).order("created_at", { ascending: false }),
   ]);
   if (!s) notFound();
+  const requests = rets.data ?? [];
+  const waiting = requests.some((r) => r.status === "pending");
+  const anyReturned = (items.data ?? []).some((i) => i.returned_qty > 0);
 
   return (
     <div className="space-y-4">
@@ -29,8 +33,29 @@ export default async function BillPage({ params, searchParams }: { params: Promi
         <span className="flex-1" />
         <BillTools autoPrint={sp.print === "1" && s.status === "paid"} />
         <Link href="/shop-admin/pos" className="rounded border border-cream bg-white px-3 py-1.5 text-sm">New bill</Link>
-        {s.status === "paid" && <CancelBill id={s.id} action={cancelSale} />}
       </div>
+      {s.status === "paid" && !waiting && (
+        <ReturnRequest
+          saleId={s.id}
+          items={(items.data ?? []).map((i) => ({ id: i.id, sku: i.sku, name: i.name, qty: i.qty, returned_qty: i.returned_qty, price: Number(i.price) }))}
+          locations={m.locations.filter((l) => l.is_active)}
+          canCancel={!anyReturned}
+        />
+      )}
+      {requests.length > 0 && (
+        <ul className="space-y-1 text-sm print:hidden">
+          {requests.map((r) => (
+            <li key={r.id} className="rounded-lg border border-cream bg-white px-3 py-2">
+              <Link href={`/shop-admin/returns?status=${r.status}`} className="font-medium underline">{r.number}</Link>{" "}
+              {r.kind === "cancel" ? "Cancel bill" : `Return ${r.shop_return_items.map((x) => `${x.qty} × ${x.sku}`).join(", ")}`} · {rupees(r.amount)}{" "}
+              <Badge tone={r.status === "approved" ? "good" : r.status === "rejected" ? "bad" : "warn"}>
+                {r.status === "pending" ? "Waiting for approval" : r.status === "approved" ? "Approved" : "Rejected"}
+              </Badge>
+              {r.reason && <span className="text-xs text-muted"> · {r.reason}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
       <div className="bill mx-auto max-w-md rounded-xl border border-cream bg-white p-5 text-sm text-black">
         <div className="text-center">
           <p className="text-lg font-bold">{store.name}</p>
@@ -50,7 +75,7 @@ export default async function BillPage({ params, searchParams }: { params: Promi
           <tbody>
             {(items.data ?? []).map((it) => (
               <tr key={it.id}>
-                <td className="py-1">{it.name}<br /><span className="text-[10px] text-stone-500">{it.sku}</span></td>
+                <td className="py-1">{it.name}<br /><span className="text-[10px] text-stone-500">{it.sku}{it.returned_qty > 0 ? ` · ${it.returned_qty} returned` : ""}</span></td>
                 <td className="text-right">{it.qty}</td>
                 <td className="text-right">{rupees(it.price)}</td>
                 <td className="text-right">{rupees(it.line_total)}</td>

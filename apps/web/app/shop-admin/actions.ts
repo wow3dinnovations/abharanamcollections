@@ -3,7 +3,7 @@
 import type { Json } from "@abh/db";
 import { revalidatePath } from "next/cache";
 import { bool, check, requireAdmin, str } from "@/lib/admin";
-import { readLayout } from "@/lib/shop/tags";
+import { isBangleCategory, readLayout } from "@/lib/shop/tags";
 
 export type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -115,14 +115,24 @@ export async function setStock(form: FormData) {
 
 // ------------------------------------------------------------------------------------------ billing
 /** have = pieces in stock over all locations (a bill sells from wherever the piece is). */
-export type BillProduct = { id: string; sku: string; name: string; price: number; barcode: string | null; have: number };
+export type BillProduct = {
+  id: string;
+  sku: string;
+  name: string;
+  price: number;
+  barcode: string | null;
+  have: number;
+  size: string;
+  /** In a Bangles category. */
+  bangle: boolean;
+};
 
 /** Find a product by barcode or code (exact), else by name. */
 export async function findForBill(term: string): Promise<BillProduct[]> {
   const { supabase } = await requireAdmin();
   const t = term.trim();
   if (!t) return [];
-  const pick = "id, sku, name, price, shop_products(barcode), shop_stock(location_id, qty)";
+  const pick = "id, sku, name, price, size, categories(name), shop_products(barcode), shop_stock(location_id, qty)";
   const exact = await supabase.from("shop_products").select("product_id").eq("barcode", t).limit(1);
   let rows;
   if (exact.data?.length) {
@@ -141,7 +151,21 @@ export async function findForBill(term: string): Promise<BillProduct[]> {
     price: Number(r.price),
     barcode: r.shop_products?.barcode ?? null,
     have: r.shop_stock.reduce((a, s) => a + s.qty, 0),
+    size: r.size ?? "",
+    bangle: isBangleCategory(r.categories?.name),
   }));
+}
+
+/** Print tags page: change a product's size (bangle size) without opening it. */
+export async function setProductSize(productId: string, size: string): Promise<Result> {
+  try {
+    const { supabase } = await requireAdmin();
+    check(await supabase.from("products").update({ size: size.trim().slice(0, 20) }).eq("id", productId));
+    refreshAll();
+    return { ok: true };
+  } catch (e) {
+    return fail(e);
+  }
 }
 
 export type SaleInput = {
@@ -228,12 +252,6 @@ export async function findCustomer(phone: string): Promise<CustomerLookup> {
     bill_count: all?.length ?? 0,
     total_spent: (all ?? []).reduce((a, s) => a + Number(s.total), 0),
   };
-}
-
-export async function cancelSale(form: FormData) {
-  const { supabase } = await requireAdmin();
-  check(await supabase.rpc("shop_cancel_sale", { p_sale: str(form, "id") }));
-  refreshAll();
 }
 
 // ------------------------------------------------------------------------------------------ setup
@@ -403,4 +421,69 @@ export async function productIdsForCodes(codes: string[]): Promise<Record<string
     for (const r of data ?? []) out[r.sku.toUpperCase()] = { id: r.id, hasPhoto: r.image_paths.length > 0 };
   }
   return out;
+}
+
+// ------------------------------------------------------------------------------------------ expenses
+const EXPENSE_CATS = ["rent", "electricity", "bills", "donation", "salary", "transport", "maintenance", "other"];
+
+export async function addExpense(form: FormData) {
+  const { supabase } = await requireAdmin();
+  const amount = Number(str(form, "amount"));
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error("Enter the amount.");
+  const category = str(form, "category");
+  if (!EXPENSE_CATS.includes(category)) throw new Error("Choose what the expense is for.");
+  const spent_on = str(form, "spent_on");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(spent_on)) throw new Error("Choose the date.");
+  const paid_by = ["cash", "upi", "card", "bank"].includes(str(form, "paid_by")) ? str(form, "paid_by") : "cash";
+  check(
+    await supabase.from("shop_expenses").insert({
+      spent_on,
+      category,
+      amount: Math.round(amount * 100) / 100,
+      paid_by,
+      note: str(form, "note").slice(0, 300),
+      location_id: str(form, "location_id") || null,
+    }),
+  );
+  revalidatePath("/shop-admin", "layout");
+}
+
+export async function deleteExpense(form: FormData) {
+  const { supabase } = await requireAdmin();
+  check(await supabase.from("shop_expenses").delete().eq("id", str(form, "id")));
+  revalidatePath("/shop-admin", "layout");
+}
+
+// ------------------------------------------------------------------------------------------ returns
+export type ReturnInput = {
+  sale_id: string;
+  kind: "return" | "cancel";
+  reason: string;
+  location_id: string;
+  items: { sale_item_id: number; qty: number }[];
+};
+
+/** A return or cancellation request. Stock changes only when it is approved. */
+export async function requestReturn(input: ReturnInput): Promise<Result<{ number: string }>> {
+  try {
+    const { supabase } = await requireAdmin();
+    const { data, error } = await supabase.rpc("shop_request_return", { p: input as unknown as Json });
+    if (error) return fail(error);
+    revalidatePath("/shop-admin", "layout");
+    return { ok: true, number: (data as { number: string }).number };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export async function decideReturn(form: FormData) {
+  const { supabase } = await requireAdmin();
+  check(
+    await supabase.rpc("shop_decide_return", {
+      p_return: str(form, "id"),
+      p_approve: str(form, "decision") === "approve",
+      p_note: str(form, "note").slice(0, 300),
+    }),
+  );
+  refreshAll();
 }

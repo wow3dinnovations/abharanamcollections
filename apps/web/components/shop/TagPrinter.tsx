@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { findForBill, saveTagLayout, type BillProduct } from "@/app/shop-admin/actions";
+import { findForBill, saveTagLayout, setProductSize, type BillProduct } from "@/app/shop-admin/actions";
 import { Button, Card, Field, Input, Select } from "@/components/admin/ui";
-import { DEFAULT_LAYOUT, LAYOUT_LIMITS, printHtml, readLayout, tagHtml, tagSheetHtml, type TagItem, type TagLayout } from "@/lib/shop/tags";
+import { BANGLE_SIZES, DEFAULT_LAYOUT, LAYOUT_LIMITS, printHtml, readLayout, tagHtml, tagSheetHtml, type TagItem, type TagLayout } from "@/lib/shop/tags";
 
-const SAMPLE: TagItem = { id: "sample", sku: "IB850G", name: "Dollar", price: 499, barcode: "100023", copies: 1 };
+const SAMPLE: TagItem = { id: "sample", sku: "IB850G", name: "Dollar", price: 499, barcode: "100023", copies: 1, size: "" };
 
 export function TagPrinter({
   initial,
@@ -35,7 +35,7 @@ export function TagPrinter({
     setItems((list) =>
       list.some((x) => x.id === p.id)
         ? list.map((x) => (x.id === p.id ? { ...x, copies: x.copies + 1 } : x))
-        : [...list, { id: p.id, sku: p.sku, name: p.name, price: p.price, barcode: p.barcode, copies: 1 }],
+        : [...list, { id: p.id, sku: p.sku, name: p.name, price: p.price, barcode: p.barcode, copies: 1, size: p.size, bangle: p.bangle }],
     );
     setFound([]);
     setTerm("");
@@ -106,7 +106,29 @@ export function TagPrinter({
               {items.map((t) => (
                 <li key={t.id} className="flex items-center gap-3 py-2 text-sm">
                   <span className="w-28 font-mono font-medium">{t.sku}</span>
-                  <span className="flex-1 truncate">{t.name}</span>
+                  <span className="flex-1 truncate">{t.name}{!t.bangle && t.size ? ` · ${t.size}` : ""}</span>
+                  {t.bangle && (
+                    <label className="flex items-center gap-1 text-xs text-muted">
+                      Size
+                      <Select
+                        value={t.size ?? ""}
+                        onChange={(e) => {
+                          const size = e.target.value;
+                          setItems((l) => l.map((x) => (x.id === t.id ? { ...x, size } : x)));
+                          start(async () => {
+                            const r = await setProductSize(t.id, size);
+                            setMsg(r.ok ? `Size of ${t.sku} saved: ${size || "none"}.` : r.error);
+                          });
+                        }}
+                        className="w-24"
+                        aria-label={`Bangle size of ${t.sku}`}
+                      >
+                        <option value="">–</option>
+                        {BANGLE_SIZES.map((z) => <option key={z} value={z}>{z}</option>)}
+                        {t.size && !BANGLE_SIZES.includes(t.size) && <option value={t.size}>{t.size}</option>}
+                      </Select>
+                    </label>
+                  )}
                   <span>₹{t.price}</span>
                   <label className="flex items-center gap-1 text-xs text-muted">
                     Tags
@@ -204,6 +226,8 @@ export function TagPrinter({
                 <Field label="Name label"><Input value={L.label_name} maxLength={20} onChange={(e) => set("label_name", e.target.value)} className="w-24" /></Field>
                 <label className="flex items-center gap-1 pb-2 text-sm"><input type="checkbox" checked={L.show_price} onChange={(e) => set("show_price", e.target.checked)} /> Price</label>
                 <Field label="Price label"><Input value={L.label_price} maxLength={20} onChange={(e) => set("label_price", e.target.value)} className="w-24" /></Field>
+                <label className="flex items-center gap-1 pb-2 text-sm"><input type="checkbox" checked={L.show_size} onChange={(e) => set("show_size", e.target.checked)} /> Size (bangles)</label>
+                <Field label="Size label"><Input value={L.label_size} maxLength={20} onChange={(e) => set("label_size", e.target.value)} className="w-24" /></Field>
                 <label className="flex items-center gap-1 pb-2 text-sm"><input type="checkbox" checked={L.rupee} onChange={(e) => set("rupee", e.target.checked)} /> ₹ sign</label>
               </fieldset>
               <fieldset className="flex flex-wrap items-end gap-3 rounded-lg border border-cream p-3">

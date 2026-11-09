@@ -3,8 +3,9 @@ import { PageHeader } from "@/components/admin/ui";
 import { ProductForm } from "@/components/shop/ProductForm";
 import { getMasters } from "@/lib/shop/server";
 
-export default async function NewShopProduct() {
-  const m = await getMasters();
+export default async function NewShopProduct({ searchParams }: { searchParams: Promise<{ sku?: string }> }) {
+  const [m, sp] = await Promise.all([getMasters(), searchParams]);
+  const sku = (sp.sku ?? "").toUpperCase().replace(/[^A-Z0-9_./-]/g, "").slice(0, 40);
   return (
     <div>
       <PageHeader title="Add product" />
@@ -23,6 +24,7 @@ export default async function NewShopProduct() {
         locations={m.locations}
         defaultMultiplier={Number(m.settings.default_multiplier)}
         guaranteeMonths={Number(m.settings.guarantee_months ?? 6)}
+        initialSku={sku || undefined}
       />
     </div>
   );
