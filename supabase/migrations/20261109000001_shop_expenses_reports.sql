@@ -39,7 +39,7 @@ create index if not exists shop_sales_day on public.shop_sales (created_at desc)
 
 alter table public.shop_stock_moves drop constraint shop_stock_moves_reason_check;
 alter table public.shop_stock_moves add constraint shop_stock_moves_reason_check
-  check (reason in ('opening', 'adjust', 'sale', 'cancel', 'import', 'return'));
+  check (reason in ('opening', 'adjust', 'sale', 'cancel', 'import', 'online', 'online_cancel', 'return'));
 
 -- ---------------------------------------------------------------------------------------------- returns
 create sequence public.shop_return_number_seq;
