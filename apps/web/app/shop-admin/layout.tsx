@@ -12,7 +12,12 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
   // Only the shop admin. Everyone else gets a plain 404, so the page isn't advertised.
   if (!session?.isAdmin) notFound();
   const supabase = await createClient();
-  const { count: pending } = await supabase.from("shop_returns").select("id", { count: "exact", head: true }).eq("status", "pending");
+  const [{ count: pending, error: noReturns }, { error: noReports }] = await Promise.all([
+    supabase.from("shop_returns").select("id", { count: "exact", head: true }).eq("status", "pending"),
+    supabase.rpc("shop_report", { p_from: "2026-01-01", p_to: "2026-01-01", p_by: "total" }),
+  ]);
+  // The new pages need the database update (supabase/migrations/20261109000001_shop_expenses_reports.sql).
+  const needsUpdate = !!(noReturns || noReports);
   const name = session.profile?.full_name?.trim() || "Admin";
 
   return (
@@ -48,6 +53,12 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
           </form>
         </header>
         <main className="min-w-0 flex-1 overflow-y-auto overscroll-contain px-4 py-6 md:px-8 print:overflow-visible print:p-0">
+          {needsUpdate && (
+            <p className="mx-auto mb-6 max-w-7xl rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 print:hidden">
+              <b>Database update needed.</b> Expenses, reports, returns and profit show zeros until the latest database update is
+              applied in Supabase (file <code>20261109000001_shop_expenses_reports.sql</code>). Billing, products, stock and tags work as before.
+            </p>
+          )}
           {children}
         </main>
       </div>
