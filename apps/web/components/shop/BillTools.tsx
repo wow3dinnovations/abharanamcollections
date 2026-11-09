@@ -17,16 +17,11 @@ export function BillTools({ autoPrint }: { autoPrint: boolean }) {
   );
 }
 
-export function CancelBill({ id, action }: { id: string; action: (form: FormData) => Promise<void> }) {
+/** Prints the page (reports). */
+export function PrintButton({ label = "Print" }: { label?: string }) {
   return (
-    <form
-      action={action}
-      onSubmit={(e) => {
-        if (!confirm("Cancel this bill? Its items go back into stock.")) e.preventDefault();
-      }}
-    >
-      <input type="hidden" name="id" value={id} />
-      <button className="rounded border border-red-300 bg-white px-3 py-1.5 text-sm text-red-700 hover:bg-red-50">Cancel bill</button>
-    </form>
+    <button type="button" onClick={() => window.print()} className="rounded border border-cream bg-white px-3 py-1.5 text-sm font-medium hover:bg-cream print:hidden">
+      {label}
+    </button>
   );
 }

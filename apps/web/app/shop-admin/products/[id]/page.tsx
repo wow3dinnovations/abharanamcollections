@@ -9,7 +9,7 @@ import { requireAdmin } from "@/lib/admin";
 import { getMasters, istDate } from "@/lib/shop/server";
 import { setStock } from "../../actions";
 
-const REASONS: Record<string, string> = { opening: "Added", adjust: "Stock changed", sale: "Sold", cancel: "Bill cancelled", import: "Imported" };
+const REASONS: Record<string, string> = { opening: "Added", adjust: "Stock changed", sale: "Sold", cancel: "Bill cancelled", import: "Imported", return: "Returned" };
 
 export default async function ShopProduct({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

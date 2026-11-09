@@ -1,6 +1,25 @@
 import { barcodeSvg } from "@abh/core";
 
-export type TagItem = { id: string; sku: string; name: string; price: number; barcode: string | null; copies: number };
+export type TagItem = {
+  id: string;
+  sku: string;
+  name: string;
+  price: number;
+  barcode: string | null;
+  copies: number;
+  /** Bangle size like 2.6 (or any size); printed on the tag when set. */
+  size?: string;
+  /** The product is in a Bangles category (the print page then offers the size list). */
+  bangle?: boolean;
+};
+
+/** Bangle sizes offered when the category is Bangles. */
+export const BANGLE_SIZES = ["2.0", "2.2", "2.4", "2.6", "2.8", "2.10", "2.12", "2.14", "2.16", "2.18"];
+
+/** "Bangles", "Bangle sets", "Kada bangles"... */
+export function isBangleCategory(name: string | null | undefined) {
+  return /bangle/i.test(name ?? "");
+}
 
 /** How a tag is laid out. All sizes in millimetres, measured from the left/top edge of the tag. */
 export type TagLayout = {
@@ -27,9 +46,12 @@ export type TagLayout = {
   show_code: boolean;
   show_name: boolean;
   show_price: boolean;
+  /** Size line (bangle size 2.6 etc.), only on tags of products that have a size. */
+  show_size: boolean;
   label_code: string;
   label_name: string;
   label_price: string;
+  label_size: string;
   rupee: boolean;
 };
 
@@ -50,9 +72,11 @@ export const DEFAULT_LAYOUT: TagLayout = {
   show_code: true,
   show_name: true,
   show_price: true,
+  show_size: true,
   label_code: "PID : ",
   label_name: "NAME : ",
   label_price: "Price ",
+  label_size: "SIZE : ",
   rupee: false,
 };
 
@@ -111,10 +135,13 @@ function jewelleryTag(t: TagItem, W: number, H: number, L: TagLayout, guides: bo
   const lines: string[] = [];
   if (L.show_code) lines.push(L.label_code + t.sku);
   if (L.show_name) lines.push(L.label_name + t.name);
+  if (L.show_size && t.size) lines.push(L.label_size + t.size);
   if (L.show_price) lines.push(L.label_price + price(t.price, L.rupee));
+  // A fourth line (size) must still fit the tag's height: letters get a little smaller when needed.
+  const fs = Math.min(L.font_size, (H * 0.92) / (Math.max(1, lines.length) * 1.18));
   const text =
     `<div style="position:absolute;left:${n2(L.offset_x + L.text_x)}mm;top:${n2(L.offset_y)}mm;width:${n2(L.text_width)}mm;height:${H}mm;` +
-    `display:flex;flex-direction:column;justify-content:center;font-size:${n2(L.font_size)}mm;line-height:1.18;` +
+    `display:flex;flex-direction:column;justify-content:center;font-size:${n2(fs)}mm;line-height:1.18;` +
     `font-weight:${L.bold ? 700 : 400};${L.uppercase ? "text-transform:uppercase;" : ""}">` +
     lines.map((s) => `<div style="white-space:nowrap;overflow:hidden">${esc(s)}</div>`).join("") +
     `</div>`;
@@ -138,6 +165,7 @@ function jewelleryTag(t: TagItem, W: number, H: number, L: TagLayout, guides: bo
  *  Bigger sizes get the shop name and product name too. */
 function smallTag(t: TagItem, W: number, H: number, brand: string, L: TagLayout): string {
   const code = tagCode(t, L);
+  const size = L.show_size && t.size ? ` · ${esc(t.size)}` : "";
   const svg = barcodeSvg(code);
   const shift = `transform:translate(${n2(L.offset_x)}mm,${n2(L.offset_y)}mm);`;
   const box = `width:${W}mm;height:${H}mm;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;align-items:center;text-align:center;background:#fff;color:#000;overflow:hidden;font-family:Arial,Helvetica,sans-serif;${shift}`;
@@ -145,7 +173,7 @@ function smallTag(t: TagItem, W: number, H: number, brand: string, L: TagLayout)
     const pad = Math.max(Math.min(W, H) * 0.05, 0.4);
     return (
       `<div class="tag" style="${box}padding:${pad}mm">` +
-      `<div style="font-size:${Math.min(H * 0.29, 3.8).toFixed(2)}mm;font-weight:700;line-height:1;white-space:nowrap">${price(t.price)}</div>` +
+      `<div style="font-size:${Math.min(H * 0.29, 3.8).toFixed(2)}mm;font-weight:700;line-height:1;white-space:nowrap">${price(t.price)}${size}</div>` +
       `<div style="width:${(W - 2 * pad).toFixed(2)}mm;height:${(H * 0.36).toFixed(2)}mm">${svg}</div>` +
       `<div style="font-size:${Math.min(H * 0.15, 1.9).toFixed(2)}mm;letter-spacing:0.1mm;line-height:1;white-space:nowrap">${esc(code)}</div>` +
       `</div>`
@@ -157,7 +185,7 @@ function smallTag(t: TagItem, W: number, H: number, brand: string, L: TagLayout)
     `<div class="tag" style="${box}padding:${mm(1.4)}">` +
     `<div style="font-size:${mm(2.3)};font-weight:700;letter-spacing:${mm(0.3)};white-space:nowrap">${esc(brand)}</div>` +
     `<div style="width:100%"><div style="font-size:${mm(2.5)};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(t.name)}</div>` +
-    `<div style="font-size:${mm(4.4)};font-weight:700;line-height:1.1">${price(t.price)}</div></div>` +
+    `<div style="font-size:${mm(4.4)};font-weight:700;line-height:1.1">${price(t.price)}${size}</div></div>` +
     `<div style="width:92%"><div style="height:${mm(7)}">${svg}</div>` +
     `<div style="font-size:${mm(2)};letter-spacing:${mm(0.2)};margin-top:${mm(0.5)};white-space:nowrap">${esc(code)}${code !== t.sku ? ` · ${esc(t.sku)}` : ""}</div></div>` +
     `</div>`

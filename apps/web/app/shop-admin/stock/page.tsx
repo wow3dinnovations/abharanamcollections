@@ -5,7 +5,7 @@ import { getMasters, istDate, searchTerm } from "@/lib/shop/server";
 import { setStock } from "../actions";
 
 const PAGE = 50;
-const REASONS: Record<string, string> = { opening: "Added", adjust: "Changed", sale: "Sold", cancel: "Bill cancelled", import: "Imported" };
+const REASONS: Record<string, string> = { opening: "Added", adjust: "Changed", sale: "Sold", cancel: "Bill cancelled", import: "Imported", return: "Returned" };
 
 const AGES = [
   { v: "", label: "Any age" },
