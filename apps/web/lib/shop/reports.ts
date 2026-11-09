@@ -30,7 +30,11 @@ export const EMPTY_ROW: ReportRow = Object.fromEntries([["period", ""], ...NUMS.
 export async function getReport(from: string, to: string, by: "day" | "month" | "total"): Promise<ReportRow[]> {
   const { supabase } = await requireAdmin();
   const { data, error } = await supabase.rpc("shop_report", { p_from: from, p_to: to, p_by: by });
-  if (error) throw new Error(error.message);
+  // Without the database update (or on a bad date range) the page still opens, with zeros.
+  if (error) {
+    console.error("shop_report:", error.message);
+    return by === "total" ? [{ ...EMPTY_ROW, period: from }] : [];
+  }
   return ((data ?? []) as Record<string, unknown>[]).map((r) => {
     const row = { ...EMPTY_ROW, period: String(r.period ?? "") };
     for (const k of NUMS) (row as Record<string, unknown>)[k] = Number(r[k] ?? 0);
@@ -55,7 +59,7 @@ export type Breakdown = {
 export async function getBreakdown(from: string, to: string): Promise<Breakdown> {
   const { supabase } = await requireAdmin();
   const { data, error } = await supabase.rpc("shop_breakdown", { p_from: from, p_to: to });
-  if (error) throw new Error(error.message);
+  if (error) console.error("shop_breakdown:", error.message);
   const d = (data ?? {}) as Partial<Breakdown>;
   return { categories: d.categories ?? [], payments: d.payments ?? [], products: d.products ?? [], expenses: d.expenses ?? [] };
 }
@@ -81,7 +85,7 @@ export type VendorRow = {
 export async function getVendorReport(from: string, to: string): Promise<VendorRow[]> {
   const { supabase } = await requireAdmin();
   const { data, error } = await supabase.rpc("shop_vendor_report", { p_from: from, p_to: to });
-  if (error) throw new Error(error.message);
+  if (error) console.error("shop_vendor_report:", error.message);
   return (data ?? []) as VendorRow[];
 }
 
