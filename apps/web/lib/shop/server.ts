@@ -1,5 +1,6 @@
 import "server-only";
 import { requireAdmin } from "@/lib/admin";
+import { isBangleCategory, type TagItem } from "@/lib/shop/tags";
 
 export type Masters = Awaited<ReturnType<typeof getMasters>>;
 
@@ -57,4 +58,21 @@ export function istDayStart(day: string) {
 /** Safe text for an ilike search. */
 export function searchTerm(q: string) {
   return q.replace(/[%_,()\\]/g, " ").trim();
+}
+
+/** Tags for these products, in the order given (one tag each). */
+export async function getTagItems(ids: string[]): Promise<TagItem[]> {
+  const clean = ids.filter((x) => /^[0-9a-f-]{36}$/i.test(x)).slice(0, 500);
+  if (!clean.length) return [];
+  const { supabase } = await requireAdmin();
+  const { data } = await supabase
+    .from("products")
+    .select("id, sku, name, price, size, categories(name), shop_products(barcode)")
+    .in("id", clean);
+  return (data ?? [])
+    .map((p) => ({
+      id: p.id, sku: p.sku, name: p.name, price: Number(p.price), barcode: p.shop_products?.barcode ?? null, copies: 1,
+      size: p.size ?? "", bangle: isBangleCategory(p.categories?.name),
+    }))
+    .sort((a, b) => clean.indexOf(a.id) - clean.indexOf(b.id));
 }

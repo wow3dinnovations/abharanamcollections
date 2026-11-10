@@ -1,6 +1,6 @@
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, landingAfterLogin } from "@/lib/supabase/server";
 import { safeNext } from "@/lib/storage";
 
 // The login link in the email: /auth/confirm?token_hash=...&type=email&next=/account
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   if (tokenHash) {
     const supabase = await createClient();
     const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
-    if (!error) return NextResponse.redirect(`${origin}${next}`);
+    if (!error) return NextResponse.redirect(`${origin}${await landingAfterLogin(supabase, next)}`);
   }
   return NextResponse.redirect(
     `${origin}/login?next=${encodeURIComponent(next)}&error=${encodeURIComponent(

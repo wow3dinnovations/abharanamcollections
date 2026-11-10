@@ -41,7 +41,6 @@ export type TagLayout = {
   barcode_height: number;
   /** What the barcode holds: the product code (IB850G) or the barcode number (100023). */
   barcode_value: "sku" | "barcode";
-  barcode_text: boolean;
   /** Lines and their labels. */
   show_code: boolean;
   show_name: boolean;
@@ -68,7 +67,6 @@ export const DEFAULT_LAYOUT: TagLayout = {
   barcode_width: 21,
   barcode_height: 6,
   barcode_value: "sku",
-  barcode_text: false,
   show_code: true,
   show_name: true,
   show_price: true,
@@ -145,12 +143,13 @@ function jewelleryTag(t: TagItem, W: number, H: number, L: TagLayout, guides: bo
     `font-weight:${L.bold ? 700 : 400};${L.uppercase ? "text-transform:uppercase;" : ""}">` +
     lines.map((s) => `<div style="white-space:nowrap;overflow:hidden">${esc(s)}</div>`).join("") +
     `</div>`;
-  const numH = L.barcode_text ? Math.min(L.font_size, 2) : 0;
+  // The price always prints under the barcode.
+  const numH = Math.max(1, Math.min(L.font_size, H - L.barcode_height - 0.4));
   const top = L.offset_y + (H - L.barcode_height - numH) / 2;
   const bars =
     `<div style="position:absolute;left:${n2(L.offset_x + L.barcode_x)}mm;top:${n2(top)}mm;width:${n2(L.barcode_width)}mm">` +
     `<div style="height:${n2(L.barcode_height)}mm">${barcodeSvg(code)}</div>` +
-    (L.barcode_text ? `<div style="font-size:${n2(numH)}mm;line-height:1;text-align:center;white-space:nowrap">${esc(code)}</div>` : "") +
+    `<div style="font-size:${n2(numH)}mm;line-height:1;font-weight:700;text-align:center;white-space:nowrap">${esc(price(t.price, L.rupee))}</div>` +
     `</div>`;
   // Guides are not moved by the offsets: they show where the paper tag is, so you can see what the offsets do.
   const fold = (L.text_x + L.text_width + L.barcode_x) / 2;
@@ -161,7 +160,7 @@ function jewelleryTag(t: TagItem, W: number, H: number, L: TagLayout, guides: bo
   return `<div class="tag" style="${box}">${guide}${text}${bars}</div>`;
 }
 
-/** Small tags (like the 18 x 12 mm jewellery tag): price, barcode and the barcode number.
+/** Small tags (like the 18 x 12 mm jewellery tag): code, barcode and the price under the barcode.
  *  Bigger sizes get the shop name and product name too. */
 function smallTag(t: TagItem, W: number, H: number, brand: string, L: TagLayout): string {
   const code = tagCode(t, L);
@@ -173,9 +172,9 @@ function smallTag(t: TagItem, W: number, H: number, brand: string, L: TagLayout)
     const pad = Math.max(Math.min(W, H) * 0.05, 0.4);
     return (
       `<div class="tag" style="${box}padding:${pad}mm">` +
-      `<div style="font-size:${Math.min(H * 0.29, 3.8).toFixed(2)}mm;font-weight:700;line-height:1;white-space:nowrap">${price(t.price)}${size}</div>` +
+      `<div style="font-size:${Math.min(H * 0.15, 1.9).toFixed(2)}mm;letter-spacing:0.1mm;line-height:1;white-space:nowrap">${esc(t.sku)}${size}</div>` +
       `<div style="width:${(W - 2 * pad).toFixed(2)}mm;height:${(H * 0.36).toFixed(2)}mm">${svg}</div>` +
-      `<div style="font-size:${Math.min(H * 0.15, 1.9).toFixed(2)}mm;letter-spacing:0.1mm;line-height:1;white-space:nowrap">${esc(code)}</div>` +
+      `<div style="font-size:${Math.min(H * 0.29, 3.8).toFixed(2)}mm;font-weight:700;line-height:1;white-space:nowrap">${price(t.price)}</div>` +
       `</div>`
     );
   }
@@ -184,10 +183,9 @@ function smallTag(t: TagItem, W: number, H: number, brand: string, L: TagLayout)
   return (
     `<div class="tag" style="${box}padding:${mm(1.4)}">` +
     `<div style="font-size:${mm(2.3)};font-weight:700;letter-spacing:${mm(0.3)};white-space:nowrap">${esc(brand)}</div>` +
-    `<div style="width:100%"><div style="font-size:${mm(2.5)};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(t.name)}</div>` +
-    `<div style="font-size:${mm(4.4)};font-weight:700;line-height:1.1">${price(t.price)}${size}</div></div>` +
+    `<div style="width:100%;font-size:${mm(2.5)};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(t.sku)} · ${esc(t.name)}${size}</div>` +
     `<div style="width:92%"><div style="height:${mm(7)}">${svg}</div>` +
-    `<div style="font-size:${mm(2)};letter-spacing:${mm(0.2)};margin-top:${mm(0.5)};white-space:nowrap">${esc(code)}${code !== t.sku ? ` · ${esc(t.sku)}` : ""}</div></div>` +
+    `<div style="font-size:${mm(4.4)};font-weight:700;line-height:1.1;margin-top:${mm(0.5)}">${price(t.price)}</div></div>` +
     `</div>`
   );
 }
@@ -204,9 +202,13 @@ export function tagSheetHtml(items: TagItem[], W: number, H: number, brand: stri
   );
 }
 
-/** Print HTML through a hidden frame, so only the tags (or the bill) are printed. */
+/** Print HTML through a hidden frame on the same page (no new tab), so only the tags (or the bill) are printed.
+ *  Chrome started with --kiosk-printing prints straight to the default printer without the print window. */
 export function printHtml(html: string) {
+  document.querySelectorAll("iframe[data-print-frame]").forEach((f) => f.remove());
   const frame = document.createElement("iframe");
+  frame.setAttribute("data-print-frame", "");
+  frame.setAttribute("aria-hidden", "true");
   frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
   document.body.appendChild(frame);
   const doc = frame.contentWindow!.document;

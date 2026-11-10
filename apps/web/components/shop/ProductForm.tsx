@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { saveProduct, suggestCode, type ProductInput } from "@/app/shop-admin/actions";
 import { Button, Field, Input, Select, Textarea } from "@/components/admin/ui";
+import { PrintTagButton } from "@/components/shop/PrintTagButton";
 import { uploadProductPhoto } from "@/lib/shop/photo";
 import { BANGLE_SIZES, isBangleCategory } from "@/lib/shop/tags";
 
@@ -54,7 +55,7 @@ export function ProductForm(props: ProductFormProps) {
   const [saved, setSaved] = useState<{ id: string; sku: string }[]>([]);
   const [pending, start] = useTransition();
   const photoInput = useRef<HTMLInputElement>(null);
-  const nameInput = useRef<HTMLInputElement>(null);
+  const rateInput = useRef<HTMLInputElement>(null);
   const loaded = useRef(!isNew);
 
   const set = (k: keyof ProductInput, v: string | boolean) => setF((old) => ({ ...old, [k]: v }));
@@ -110,10 +111,14 @@ export function ProductForm(props: ProductFormProps) {
     if (!priceTouched && auto !== "") setF((old) => (old.price === auto ? old : { ...old, price: auto }));
   }, [auto, priceTouched]);
 
+  const categoryName = props.categories.find((c) => c.id === f.category_id)?.name ?? "";
+
   function submit(mode: "open" | "next") {
     setError("");
+    // The name is the category's name. An existing product keeps its own name unless its category changes.
+    const name = isNew || f.category_id !== initial?.category_id || !f.name.trim() ? categoryName : f.name;
     start(async () => {
-      const res = await saveProduct({ ...f, id: initial?.id, code_serial: skuTouched ? null : f.code_serial });
+      const res = await saveProduct({ ...f, name, id: initial?.id, code_serial: skuTouched ? null : f.code_serial });
       if (!res.ok) {
         setError(res.error);
         return;
@@ -149,11 +154,10 @@ export function ProductForm(props: ProductFormProps) {
       setSkuTouched(false);
       setPriceTouched(false);
       setCodeTick((t) => t + 1);
-      nameInput.current?.focus();
+      rateInput.current?.focus();
     });
   }
 
-  const subs = props.subcategories.filter((s) => s.category_id === f.category_id);
   const bangle = isBangleCategory(props.categories.find((c) => c.id === f.category_id)?.name);
   const activeOnly = (list: Option[], keep: string) => list.filter((o) => o.is_active !== false || o.id === keep);
 
@@ -175,12 +179,12 @@ export function ProductForm(props: ProductFormProps) {
                   <Link href={`/shop-admin/products/${s.id}`} className="font-semibold underline">{s.sku}</Link>
                 </span>
               ))}.{" "}
-              <Link href={`/shop-admin/tags?${saved.map((s) => `id=${s.id}`).join("&")}`} className="font-semibold underline">
+              <PrintTagButton ids={saved.map((s) => s.id)} className="font-semibold underline disabled:opacity-60">
                 Print {saved.length === 1 ? "its tag" : `tags for these ${saved.length}`}
-              </Link>
+              </PrintTagButton>
             </>
           ) : (
-            <>Saved. <Link href={`/shop-admin/tags?id=${saved[0]!.id}`} className="font-semibold underline">Print tag</Link></>
+            <>Saved. <PrintTagButton ids={[saved[0]!.id]} className="font-semibold underline disabled:opacity-60" /></>
           )}
         </div>
       )}
@@ -227,14 +231,8 @@ export function ProductForm(props: ProductFormProps) {
             )}
           </span>
         </Field>
-        <Field label="Name *">
-          <Input ref={nameInput} required value={f.name} onChange={(e) => set("name", e.target.value)} placeholder="Temple jhumka" />
-        </Field>
-        <Field label="Sub-category">
-          <Select value={f.subcategory_id} onChange={(e) => set("subcategory_id", e.target.value)} disabled={!subs.length}>
-            <option value="">–</option>
-            {subs.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </Select>
+        <Field label="Name (from the category)">
+          <Input value={isNew || f.category_id !== initial?.category_id || !f.name.trim() ? categoryName : f.name} readOnly tabIndex={-1} className="bg-stone-50 text-muted" placeholder="Choose a category" />
         </Field>
         {bangle && (
           <Field label="Bangle size (printed on the tag)">
@@ -247,10 +245,10 @@ export function ProductForm(props: ProductFormProps) {
         )}
       </fieldset>
 
-      <fieldset className="grid gap-3 rounded-xl border border-cream bg-white p-4 sm:grid-cols-4">
+      <fieldset className="grid gap-3 rounded-xl border border-cream bg-white p-4 sm:grid-cols-3">
         <legend className="px-1 text-sm font-semibold">Price</legend>
         <Field label="Purchase rate (₹)">
-          <Input type="number" min="0" step="0.01" inputMode="decimal" value={f.purchase_rate} onChange={(e) => set("purchase_rate", e.target.value)} />
+          <Input ref={rateInput} type="number" min="0" step="0.01" inputMode="decimal" value={f.purchase_rate} onChange={(e) => set("purchase_rate", e.target.value)} />
         </Field>
         <Field label="Multiplier (×)">
           <Input type="number" min="0.1" step="0.01" inputMode="decimal" value={f.multiplier} onChange={(e) => set("multiplier", e.target.value)} />
@@ -262,9 +260,6 @@ export function ProductForm(props: ProductFormProps) {
               <button type="button" className="underline" onClick={() => { setPriceTouched(false); set("price", auto); }}>Use ₹{auto} (rate × multiplier)</button>
             ) : ""}
           </span>
-        </Field>
-        <Field label="MRP (crossed-out price, optional)">
-          <Input type="number" min="0" step="1" value={f.mrp} onChange={(e) => set("mrp", e.target.value)} />
         </Field>
       </fieldset>
 

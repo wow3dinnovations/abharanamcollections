@@ -1,6 +1,6 @@
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, landingAfterLogin } from "@/lib/supabase/server";
 import { safeNext } from "@/lib/storage";
 
 // Older login links (?code=...) and links sent before the email template was changed.
@@ -15,11 +15,11 @@ export async function GET(request: NextRequest) {
   const tokenHash = searchParams.get("token_hash");
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) return NextResponse.redirect(`${origin}${next}`);
+    if (!error) return NextResponse.redirect(`${origin}${await landingAfterLogin(supabase, next)}`);
   } else if (tokenHash) {
     const type = (searchParams.get("type") ?? "email") as EmailOtpType;
     const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
-    if (!error) return NextResponse.redirect(`${origin}${next}`);
+    if (!error) return NextResponse.redirect(`${origin}${await landingAfterLogin(supabase, next)}`);
   }
   // A link opened in a different browser or email app than the one that asked for it can't be used:
   // the code from the same email still works.

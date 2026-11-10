@@ -3,7 +3,8 @@
 import type { Json } from "@abh/db";
 import { revalidatePath } from "next/cache";
 import { bool, check, requireAdmin, str } from "@/lib/admin";
-import { isBangleCategory, readLayout } from "@/lib/shop/tags";
+import { getMasters, getStoreName, getTagItems } from "@/lib/shop/server";
+import { isBangleCategory, readLayout, type TagItem, type TagLayout } from "@/lib/shop/tags";
 
 export type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -72,6 +73,12 @@ export async function saveProduct(input: ProductInput): Promise<Result<{ id: str
     const { supabase } = await requireAdmin();
     const price = Number(input.price);
     if (!Number.isFinite(price) || price < 0) return { ok: false, error: "Enter the selling price." };
+    // The product name is the category name (the form no longer asks for it).
+    if (!input.name?.trim() && input.category_id) {
+      const { data: cat } = await supabase.from("categories").select("name").eq("id", input.category_id).maybeSingle();
+      input = { ...input, name: cat?.name ?? "" };
+    }
+    if (!input.name?.trim()) return { ok: false, error: "Choose a category." };
     const { data, error } = await supabase.rpc("shop_save_product", { p: input as unknown as Json });
     if (error) return fail(error);
     refreshAll();
@@ -154,6 +161,42 @@ export async function findForBill(term: string): Promise<BillProduct[]> {
     size: r.size ?? "",
     bangle: isBangleCategory(r.categories?.name),
   }));
+}
+
+/** Everything needed to print these products' tags straight away (from a "Print tag" button). */
+export async function tagPrintData(ids: string[]): Promise<{ items: TagItem[]; width: number; height: number; brand: string; layout: TagLayout }> {
+  const [m, store, items] = await Promise.all([getMasters(), getStoreName(), getTagItems(ids)]);
+  return {
+    items,
+    width: Number(m.settings.tag_width_mm) || 80,
+    height: Number(m.settings.tag_height_mm) || 12,
+    brand: store.name,
+    layout: readLayout(m.settings.tag_layout),
+  };
+}
+
+export type CodeHint = { id: string; sku: string; name: string; price: number; stock_qty: number };
+
+/** Codes that start with what was typed, shortest first (IH1 -> IH12, IH13, ... IH123...). A barcode number matches too. */
+export async function codeHints(input: string): Promise<CodeHint[]> {
+  const { supabase } = await requireAdmin();
+  const term = input.trim().toUpperCase().replace(/[^A-Z0-9_./-]/g, "").slice(0, 40);
+  if (!term) return [];
+  const like = term.replace(/[_\\]/g, (c) => `\\${c}`);
+  const pick = "id, sku, name, price, stock_qty";
+  const [byCode, byBarcode] = await Promise.all([
+    supabase.from("products").select(pick).ilike("sku", `${like}%`).order("sku").limit(500),
+    /^\d{4,}$/.test(term)
+      ? supabase.from("shop_products").select(`products(${pick})`).eq("barcode", term).limit(1)
+      : Promise.resolve({ data: [] as { products: CodeHint | null }[] }),
+  ]);
+  const rows = [...(byBarcode.data ?? []).map((b) => b.products).filter((p): p is CodeHint => !!p), ...(byCode.data ?? [])];
+  const seen = new Set<string>();
+  return rows
+    .filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)))
+    .map((r) => ({ id: r.id, sku: r.sku, name: r.name, price: Number(r.price), stock_qty: r.stock_qty }))
+    .sort((a, b) => Number(b.sku.toUpperCase() === term) - Number(a.sku.toUpperCase() === term) || a.sku.length - b.sku.length || a.sku.localeCompare(b.sku))
+    .slice(0, 12);
 }
 
 /** Print tags page: change a product's size (bangle size) without opening it. */

@@ -164,8 +164,9 @@ export function TagPrinter({
             Test print one tag with outline
           </Button>
           <p className="text-xs text-muted">
-            In the print window choose the tag printer, paper size {W} × {H} mm, scale 100% (or “Actual size”), margins none.
-            If the print sits too far left or right, change <b>Move left / right</b> below and print a test tag again.
+            Prints on this page, no new tab. To skip the print window too, open the shop software with the
+            “Print tags directly” Chrome shortcut (see the guide). If the print sits too far left or right, change{" "}
+            <b>Move left / right</b> below and print a test tag again.
           </p>
         </div>
       </div>
@@ -186,8 +187,8 @@ export function TagPrinter({
           <div className="flex flex-wrap items-end gap-3">
             <Field label="Tag type">
               <Select value={L.style} onChange={(e) => set("style", e.target.value as TagLayout["style"])}>
-                <option value="jewellery">Jewellery tag with tail (PID, name, price + barcode)</option>
-                <option value="small">Small tag (price, barcode, number)</option>
+                <option value="jewellery">Jewellery tag with tail (PID, name + barcode with price under it)</option>
+                <option value="small">Small tag (code, barcode, price under it)</option>
               </Select>
             </Field>
             <Field label="Width (mm)"><Input type="number" min="10" max="120" step="0.5" value={W} onChange={(e) => setW(Number(e.target.value))} className="w-20" /></Field>
@@ -235,7 +236,7 @@ export function TagPrinter({
                 {num("barcode_x", "Starts at (mm)")}
                 {num("barcode_width", "Width (mm)")}
                 {num("barcode_height", "Height (mm)")}
-                <label className="flex items-center gap-1 pb-2 text-sm"><input type="checkbox" checked={L.barcode_text} onChange={(e) => set("barcode_text", e.target.checked)} /> Number under it</label>
+                <span className="pb-2 text-xs text-muted">The price always prints under the barcode.</span>
               </fieldset>
             </>
           )}

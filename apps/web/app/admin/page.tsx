@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Card, PageHeader } from "@/components/admin/ui";
+import { CodeSearch } from "@/components/shop/CodeSearch";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AdminHome() {
@@ -30,6 +31,9 @@ export default async function AdminHome() {
   return (
     <div className="space-y-6">
       <PageHeader title="Dashboard" />
+      <section className="rounded-2xl border border-cream bg-white p-4 shadow-sm">
+        <CodeSearch autoFocus />
+      </section>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         {stats.map(([label, n, href]) => (
           <Link key={label} href={href} className="rounded-xl border border-cream bg-white p-4 hover:border-gold">
