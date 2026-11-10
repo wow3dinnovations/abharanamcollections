@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { signOut } from "@/app/login/actions";
+import { CodeSearch } from "@/components/shop/CodeSearch";
 import { ShopMobileMenu, ShopNav } from "@/components/shop/ShopNav";
 import { createClient, getSessionProfile } from "@/lib/supabase/server";
 
@@ -45,7 +46,9 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
           <p className="hidden text-sm text-muted sm:block">
             Welcome back, <b className="text-ink">{name}</b>
           </p>
-          <span className="flex-1" />
+          <div className="flex min-w-0 flex-1 justify-center">
+            <CodeSearch compact />
+          </div>
           <span className="rounded-full bg-gold-light/60 px-2.5 py-0.5 text-xs font-medium text-maroon-dark">Admin</span>
           <Link href="/" className="text-sm font-medium hover:text-maroon">Website</Link>
           <form action={signOut}>

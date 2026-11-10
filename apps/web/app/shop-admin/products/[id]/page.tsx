@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Button, Card, Input, PageHeader, Table, Td } from "@/components/admin/ui";
 import { ProductImage } from "@/components/ProductImage";
 import { PhotoButton } from "@/components/shop/PhotoButton";
+import { PrintTagButton } from "@/components/shop/PrintTagButton";
 import { ProductForm } from "@/components/shop/ProductForm";
 import { requireAdmin } from "@/lib/admin";
 import { getMasters, istDate } from "@/lib/shop/server";
@@ -30,7 +31,7 @@ export default async function ShopProduct({ params }: { params: Promise<{ id: st
     <div className="space-y-6">
       <PageHeader title={`${p.sku} · ${p.name}`}>
         <div className="flex flex-wrap gap-2 text-sm">
-          <Link href={`/shop-admin/tags?id=${p.id}`} className="rounded bg-maroon px-3 py-1.5 font-medium text-white">Print tag</Link>
+          <PrintTagButton ids={[p.id]} className="rounded bg-maroon px-3 py-1.5 font-medium text-white disabled:opacity-60" />
           <Link href={`/admin/products/${p.id}`} className="rounded border border-cream bg-white px-3 py-1.5">Website extras</Link>
           {p.is_active && p.is_visible && <Link href={`/products/${p.slug}`} className="rounded border border-cream bg-white px-3 py-1.5">View on website</Link>}
         </div>

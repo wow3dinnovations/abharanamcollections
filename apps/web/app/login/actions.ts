@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, landingAfterLogin } from "@/lib/supabase/server";
 import { safeNext } from "@/lib/storage";
 
 function friendly(message: string): string {
@@ -40,7 +40,7 @@ export async function verifyLoginCode(formData: FormData) {
   const supabase = await createClient();
   const { error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
   if (error) redirect(`${back}&error=${encodeURIComponent(friendly(error.message))}`);
-  redirect(next);
+  redirect(await landingAfterLogin(supabase, next));
 }
 
 export async function signOut() {

@@ -36,3 +36,14 @@ export async function getSessionProfile() {
     .single();
   return { user, profile, isAdmin: profile?.role === "admin" };
 }
+
+/** Where to go after logging in: the shop admin lands on the shop software (with the code search),
+ *  unless the login was started from a particular page. */
+export async function landingAfterLogin(supabase: Awaited<ReturnType<typeof createClient>>, next: string): Promise<string> {
+  if (next !== "/account" && next !== "/") return next;
+  // The client that just logged in already holds the new session.
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return next;
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+  return profile?.role === "admin" ? "/shop-admin" : next;
+}

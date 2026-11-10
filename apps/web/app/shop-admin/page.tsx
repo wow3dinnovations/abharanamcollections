@@ -2,6 +2,8 @@ import { barcodeSvg, rupees } from "@abh/core";
 import Link from "next/link";
 import { Badge, Card, Table, Td } from "@/components/admin/ui";
 import { ProductImage } from "@/components/ProductImage";
+import { CodeSearch } from "@/components/shop/CodeSearch";
+import { PrintTagButton } from "@/components/shop/PrintTagButton";
 import { HeroStat, ProfitTiles, Section, Stat } from "@/components/shop/Stats";
 import { requireAdmin } from "@/lib/admin";
 import { lookupCode, type LookupProduct } from "@/lib/shop/lookup";
@@ -151,20 +153,10 @@ function CodeLookupCard({ code, result }: { code: string; result: Awaited<Return
   const familyPieces = (result?.family ?? []).reduce((a, p) => a + p.stock_qty, 0);
   return (
     <section className="rounded-2xl border border-cream bg-white p-4 shadow-sm">
-      <form className="flex flex-wrap items-end gap-2" action="/shop-admin">
-        <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs font-medium uppercase tracking-wider text-muted">
-          Find a product code or barcode
-          <input
-            name="code"
-            defaultValue={code}
-            placeholder="IH123"
-            autoComplete="off"
-            className="rounded-md border border-cream px-3 py-2 font-mono text-lg uppercase text-ink"
-          />
-        </label>
-        <button className="rounded-md bg-maroon px-4 py-2.5 text-sm font-medium text-white">Check stock</button>
+      <div className="flex flex-wrap items-end gap-2">
+        <CodeSearch initial={code} autoFocus={!code} />
         {code && <Link href="/shop-admin" className="px-2 py-2.5 text-sm underline">Clear</Link>}
-      </form>
+      </div>
 
       {result && (
         <div className="mt-4 space-y-5">
@@ -183,7 +175,7 @@ function CodeLookupCard({ code, result }: { code: string; result: Awaited<Return
                   {x.stock.length > 0 && <span className="text-sm text-muted"> ({x.stock.map((s) => `${s.location} ${s.qty}`).join(", ")})</span>}
                 </p>
                 <div className="flex flex-wrap gap-2 pt-1 text-sm">
-                  <Link href={`/shop-admin/tags?id=${x.id}`} className="rounded-md bg-maroon px-3 py-1 font-medium text-white">Print tag</Link>
+                  <PrintTagButton ids={[x.id]} className="rounded-md bg-maroon px-3 py-1 font-medium text-white disabled:opacity-60" />
                   <Link href={`/shop-admin/products/${x.id}`} className="rounded-md border border-cream px-3 py-1">Open product</Link>
                   <Link href="/shop-admin/pos" className="rounded-md border border-cream px-3 py-1">New bill</Link>
                 </div>
