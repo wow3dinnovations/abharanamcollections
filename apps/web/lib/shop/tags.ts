@@ -221,3 +221,93 @@ export function printHtml(html: string) {
     setTimeout(() => frame.remove(), 60_000);
   }, 250);
 }
+
+/** The small print helper on the shop computer (installed by the setup file). It sends tags straight to the
+ *  USB tag printer, so there is no print window in any browser window. */
+const HELPER = "http://127.0.0.1:17320";
+
+async function helperFetch(path: string, init: RequestInit = {}, ms = 1500): Promise<Response> {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), ms);
+  try {
+    return await fetch(HELPER + path, { ...init, signal: ctl.signal, cache: "no-store" });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** The tag printer's name when the print helper is running on this computer, or null. */
+export async function printHelperStatus(): Promise<string | null> {
+  try {
+    const r = await helperFetch("/status");
+    if (!r.ok) return null;
+    const d = (await r.json()) as { ok?: boolean; printer?: string | null };
+    return d.ok ? (d.printer ?? "") : null;
+  } catch {
+    return null;
+  }
+}
+
+const DOTS_PER_MM = 12; // about 300 dpi: sharp on the 203 dpi tag printer too.
+
+/** One tag drawn as a black-and-white picture (PNG, base64), exactly as the HTML tag looks. */
+export async function tagPng(html: string, W: number, H: number): Promise<string> {
+  const holder = document.createElement("div");
+  holder.innerHTML = `<style>svg{width:100%;height:100%;display:block}</style>${html}`;
+  const xhtml = new XMLSerializer().serializeToString(holder);
+  const cssW = (W * 96) / 25.4;
+  const cssH = (H * 96) / 25.4;
+  const pw = Math.round(W * DOTS_PER_MM);
+  const ph = Math.round(H * DOTS_PER_MM);
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${pw}" height="${ph}" viewBox="0 0 ${cssW} ${cssH}">` +
+    `<foreignObject x="0" y="0" width="${cssW}" height="${cssH}">${xhtml}</foreignObject></svg>`;
+  const img = new Image();
+  img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+  await img.decode();
+  const canvas = document.createElement("canvas");
+  canvas.width = pw;
+  canvas.height = ph;
+  const ctx = canvas.getContext("2d")!;
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, pw, ph);
+  ctx.drawImage(img, 0, 0, pw, ph);
+  // Pure black and white: the thermal printer prints grey as speckles.
+  const data = ctx.getImageData(0, 0, pw, ph);
+  const p = data.data;
+  for (let i = 0; i < p.length; i += 4) {
+    const v = p[i]! * 0.299 + p[i + 1]! * 0.587 + p[i + 2]! * 0.114 < 170 ? 0 : 255;
+    p[i] = p[i + 1] = p[i + 2] = v;
+    p[i + 3] = 255;
+  }
+  ctx.putImageData(data, 0, 0);
+  return canvas.toDataURL("image/png").split(",")[1] ?? "";
+}
+
+/** Prints tags. With the print helper on this computer they go straight to the tag printer;
+ *  without it the browser's print window opens (or kiosk printing, if the browser was started that way).
+ *  Returns "direct" or "window". */
+export async function printTags(items: TagItem[], W: number, H: number, brand: string, L: TagLayout = DEFAULT_LAYOUT, guides = false): Promise<"direct" | "window"> {
+  const list = items.filter((t) => t.copies > 0);
+  if (!list.length) return "direct";
+  if ((await printHelperStatus()) !== null) {
+    let images: { png: string; copies: number }[] | null = [];
+    try {
+      for (const t of list) images.push({ png: await tagPng(tagHtml(t, W, H, brand, L, guides), W, H), copies: t.copies });
+    } catch {
+      images = null; // This browser could not draw the tag as a picture: use the print window instead.
+    }
+    if (images) {
+      const r = await helperFetch(
+        "/print",
+        { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ width_mm: W, height_mm: H, images }) },
+        30_000,
+      );
+      const d = (await r.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!r.ok || !d.ok) throw new Error(d.error || "The tag printer did not print.");
+      return "direct";
+    }
+  }
+  printHtml(tagSheetHtml(items, W, H, brand, L, guides));
+  return "window";
+}

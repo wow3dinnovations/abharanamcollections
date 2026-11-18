@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { findForBill, saveTagLayout, setProductSize, type BillProduct } from "@/app/shop-admin/actions";
 import { Button, Card, Field, Input, Select } from "@/components/admin/ui";
-import { BANGLE_SIZES, DEFAULT_LAYOUT, LAYOUT_LIMITS, printHtml, readLayout, tagHtml, tagSheetHtml, type TagItem, type TagLayout } from "@/lib/shop/tags";
+import { BANGLE_SIZES, DEFAULT_LAYOUT, LAYOUT_LIMITS, printHelperStatus, printTags, readLayout, tagHtml, type TagItem, type TagLayout } from "@/lib/shop/tags";
 
 const SAMPLE: TagItem = { id: "sample", sku: "IB850G", name: "Dollar", price: 499, barcode: "100023", copies: 1, size: "" };
 
@@ -30,6 +30,26 @@ export function TagPrinter({
   const [msg, setMsg] = useState("");
   const [note, setNote] = useState("");
   const [pending, start] = useTransition();
+  // The print helper on this computer: undefined while checking, null when it is not installed or not running.
+  const [helper, setHelper] = useState<string | null | undefined>(undefined);
+  const [printMsg, setPrintMsg] = useState("");
+  const [printing, setPrinting] = useState(false);
+  useEffect(() => {
+    printHelperStatus().then(setHelper);
+  }, []);
+  const print = async (list: TagItem[], guides = false) => {
+    setPrinting(true);
+    setPrintMsg("");
+    try {
+      const how = await printTags(list, W, H, brand, clean, guides);
+      if (how === "direct") setPrintMsg("Sent to the tag printer.");
+      else setHelper(null);
+    } catch (e) {
+      setPrintMsg(e instanceof Error ? e.message : "Could not print. Please try again.");
+    } finally {
+      setPrinting(false);
+    }
+  };
 
   const add = (p: BillProduct) => {
     setItems((list) =>
@@ -151,28 +171,38 @@ export function TagPrinter({
         </div>
 
         <div className="space-y-3">
-          <Button type="button" className="w-full py-2.5" disabled={!total || !sizeOk} onClick={() => printHtml(tagSheetHtml(items, W, H, brand, clean))}>
-            Print {total} tag{total === 1 ? "" : "s"}
+          <Button type="button" className="w-full py-2.5" disabled={!total || !sizeOk || printing} onClick={() => print(items)}>
+            {printing ? "Printing…" : `Print ${total} tag${total === 1 ? "" : "s"}`}
           </Button>
           <Button
             type="button"
             variant="secondary"
             className="w-full"
-            disabled={!sizeOk}
-            onClick={() => printHtml(tagSheetHtml([{ ...preview, copies: 1 }], W, H, brand, clean, true))}
+            disabled={!sizeOk || printing}
+            onClick={() => print([{ ...preview, copies: 1 }], true)}
           >
             Test print one tag with outline
           </Button>
-          <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-stone-800">
-            <p className="font-semibold">Seeing a print window every time?</p>
-            <p className="mt-1">
-              Download the setup file, double-click it once on the shop computer, then always open the shop software from
-              the new <b>Print tags directly</b> desktop icon. Tags then print straight to the tag printer.
+          {printMsg && (
+            <p className="text-sm font-medium" role="status">
+              {printMsg}
             </p>
-            <a href="/downloads/Setup-Direct-Tag-Printing.cmd" download className="mt-2 inline-block font-semibold text-amber-900 underline">
-              Download setup file (Windows)
-            </a>
-          </div>
+          )}
+          {helper ? (
+            <p className="text-xs text-green-800">Tags print straight to {helper}, with no print window.</p>
+          ) : helper === null ? (
+            <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-stone-800">
+              <p className="font-semibold">Want tags to print without the print window?</p>
+              <p className="mt-1">
+                Download the setup file and double-click it once on the shop computer (the one with the tag printer). After
+                that, Print tag sends tags straight to the printer from normal Chrome or Edge. If the browser asks to allow
+                access to devices, click <b>Allow</b>.
+              </p>
+              <a href="/downloads/Setup-Direct-Tag-Printing.cmd" download className="mt-2 inline-block font-semibold text-amber-900 underline">
+                Download setup file (Windows)
+              </a>
+            </div>
+          ) : null}
           <p className="text-xs text-muted">
             If the print sits too far left or right, change <b>Move left / right</b> below and print a test tag again.
           </p>
