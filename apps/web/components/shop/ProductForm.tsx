@@ -56,6 +56,7 @@ export function ProductForm(props: ProductFormProps) {
   const [pending, start] = useTransition();
   const photoInput = useRef<HTMLInputElement>(null);
   const rateInput = useRef<HTMLInputElement>(null);
+  const sizeInput = useRef<HTMLSelectElement>(null);
   const loaded = useRef(!isNew);
 
   const set = (k: keyof ProductInput, v: string | boolean) => setF((old) => ({ ...old, [k]: v }));
@@ -115,6 +116,11 @@ export function ProductForm(props: ProductFormProps) {
 
   function submit(mode: "open" | "next") {
     setError("");
+    if (isNew && bangle && !f.size.trim()) {
+      setError("Choose the bangle size.");
+      sizeInput.current?.focus();
+      return;
+    }
     // The name is the category's name. An existing product keeps its own name unless its category changes.
     const name = isNew || f.category_id !== initial?.category_id || !f.name.trim() ? categoryName : f.name;
     start(async () => {
@@ -146,15 +152,14 @@ export function ProductForm(props: ProductFormProps) {
         category_id: old.category_id, subcategory_id: old.subcategory_id, vendor_id: old.vendor_id,
         location_id: old.location_id, multiplier: old.multiplier, name: old.name, purchase_date: old.purchase_date,
         invoice_no: old.invoice_no, collection: old.collection, material: old.material,
-        // Bangles usually come in sets of one size: keep it for the next piece.
-        size: bangle ? old.size : "",
+        // The size is chosen again for every piece (a bangle cannot be saved without one).
       }));
       setPhoto(null);
       if (photoInput.current) photoInput.current.value = "";
       setSkuTouched(false);
       setPriceTouched(false);
       setCodeTick((t) => t + 1);
-      rateInput.current?.focus();
+      (bangle ? sizeInput.current : rateInput.current)?.focus();
     });
   }
 
@@ -235,8 +240,8 @@ export function ProductForm(props: ProductFormProps) {
           <Input value={isNew || f.category_id !== initial?.category_id || !f.name.trim() ? categoryName : f.name} readOnly tabIndex={-1} className="bg-stone-50 text-muted" placeholder="Choose a category" />
         </Field>
         {bangle && (
-          <Field label="Bangle size (printed on the tag)">
-            <Select value={f.size} onChange={(e) => set("size", e.target.value)} className="font-medium">
+          <Field label={`Bangle size${isNew ? " *" : ""} (printed on the tag)`}>
+            <Select ref={sizeInput} required={isNew} value={f.size} onChange={(e) => set("size", e.target.value)} className="font-medium">
               <option value="">Choose size…</option>
               {BANGLE_SIZES.map((z) => <option key={z} value={z}>{z}</option>)}
               {f.size && !BANGLE_SIZES.includes(f.size) && <option value={f.size}>{f.size}</option>}
