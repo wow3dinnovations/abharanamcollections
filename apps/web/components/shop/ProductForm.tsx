@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { saveProduct, suggestCode, type ProductInput } from "@/app/shop-admin/actions";
 import { Button, Field, Input, Select, Textarea } from "@/components/admin/ui";
+import { PhotoPicker } from "@/components/shop/PhotoPicker";
 import { PrintTagButton } from "@/components/shop/PrintTagButton";
 import { uploadProductPhoto } from "@/lib/shop/photo";
 import { BANGLE_SIZES, isBangleCategory } from "@/lib/shop/tags";
@@ -54,7 +55,7 @@ export function ProductForm(props: ProductFormProps) {
   const [error, setError] = useState("");
   const [saved, setSaved] = useState<{ id: string; sku: string }[]>([]);
   const [pending, start] = useTransition();
-  const photoInput = useRef<HTMLInputElement>(null);
+  const [photoTick, setPhotoTick] = useState(0);
   const rateInput = useRef<HTMLInputElement>(null);
   const sizeInput = useRef<HTMLSelectElement>(null);
   const loaded = useRef(!isNew);
@@ -155,7 +156,7 @@ export function ProductForm(props: ProductFormProps) {
         // The size is chosen again for every piece (a bangle cannot be saved without one).
       }));
       setPhoto(null);
-      if (photoInput.current) photoInput.current.value = "";
+      setPhotoTick((t) => t + 1);
       setSkuTouched(false);
       setPriceTouched(false);
       setCodeTick((t) => t + 1);
@@ -297,12 +298,15 @@ export function ProductForm(props: ProductFormProps) {
         </label>
       </fieldset>
 
+      <fieldset className="rounded-xl border border-cream bg-white p-4">
+        <legend className="px-1 text-sm font-semibold">Photo {!isNew && <span className="font-normal text-muted">(replaces the main photo)</span>}</legend>
+        <PhotoPicker onPick={setPhoto} disabled={pending} resetKey={photoTick} />
+        <p className="mt-1 text-[11px] text-muted">Take photo opens the camera on a phone or tablet. Choose photo picks one from the gallery or the computer.</p>
+      </fieldset>
+
       <details className="rounded-xl border border-cream bg-white p-4" open={!isNew}>
-        <summary className="cursor-pointer text-sm font-semibold">More details and photo</summary>
+        <summary className="cursor-pointer text-sm font-semibold">More details</summary>
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          <Field label="Photo (main photo on the website)">
-            <input ref={photoInput} type="file" accept="image/*" capture="environment" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} className="text-sm" />
-          </Field>
           <Field label="Design number"><Input value={f.design_number} onChange={(e) => set("design_number", e.target.value)} /></Field>
           {!bangle && <Field label="Size (printed on the tag)"><Input value={f.size} onChange={(e) => set("size", e.target.value)} /></Field>}
           <Field label="Colour"><Input value={f.colour} onChange={(e) => set("colour", e.target.value)} /></Field>
