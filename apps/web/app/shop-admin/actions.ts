@@ -319,13 +319,38 @@ export async function saveVendor(form: FormData) {
   const row = {
     name: str(form, "name").slice(0, 120),
     phone: str(form, "phone").slice(0, 40),
-    is_active: id ? bool(form, "is_active") : true,
+    // Editing a vendor never changes whether it is in use: Delete / Bring back do that.
+    ...(id ? {} : { is_active: true }),
     location_id,
     code_no,
     ...(next_serial !== null ? { next_serial } : {}),
   };
   if (!row.name) throw new Error("Enter the vendor's name.");
   check(id ? await supabase.from("shop_vendors").update(row).eq("id", id) : await supabase.from("shop_vendors").insert(row));
+  revalidatePath("/shop-admin", "layout");
+}
+
+/**
+ * Delete a vendor. A vendor with no products is removed for good. A vendor whose products are still in the
+ * shop's records is only taken off the lists, so those products, old bills and the vendor report keep its
+ * name, and its number is never given to a new vendor (their codes would clash).
+ */
+export async function deleteVendor(form: FormData) {
+  const { supabase } = await requireAdmin();
+  const id = str(form, "id");
+  if (!id) return;
+  const { count } = check(await supabase.from("shop_products").select("product_id", { count: "exact", head: true }).eq("vendor_id", id));
+  if (count) check(await supabase.from("shop_vendors").update({ is_active: false }).eq("id", id));
+  else check(await supabase.from("shop_vendors").delete().eq("id", id));
+  revalidatePath("/shop-admin", "layout");
+}
+
+/** Bring back a deleted vendor that still has products. */
+export async function restoreVendor(form: FormData) {
+  const { supabase } = await requireAdmin();
+  const id = str(form, "id");
+  if (!id) return;
+  check(await supabase.from("shop_vendors").update({ is_active: true }).eq("id", id));
   revalidatePath("/shop-admin", "layout");
 }
 
@@ -345,13 +370,23 @@ export async function saveLocation(form: FormData) {
 export async function saveShopCategory(form: FormData) {
   const { supabase } = await requireAdmin();
   const id = str(form, "id");
+  // Only the name is asked for. The short code is not shown any more: an existing one is kept as it is, and a
+  // new category gets none, so its old-style codes use the first letters of the name (Earrings -> ABH-EAR-000001).
   const row = {
     name: str(form, "name").slice(0, 80),
-    code: str(form, "code").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6) || null,
-    is_active: id ? bool(form, "is_active") : true,
+    ...(id ? {} : { is_active: true }),
   };
   if (!row.name) throw new Error("Enter the category name.");
   check(id ? await supabase.from("categories").update(row).eq("id", id) : await supabase.from("categories").insert({ ...row, slug: "" }));
+  refreshAll();
+}
+
+/** Turn a category that was switched off back on (only shown for categories that are off). */
+export async function enableShopCategory(form: FormData) {
+  const { supabase } = await requireAdmin();
+  const id = str(form, "id");
+  if (!id) return;
+  check(await supabase.from("categories").update({ is_active: true }).eq("id", id));
   refreshAll();
 }
 

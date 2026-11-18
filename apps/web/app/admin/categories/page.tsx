@@ -14,7 +14,7 @@ export default async function AdminCategories() {
         {(data ?? []).map((c) => (
           <tr key={c.id}>
             <Td><div className="h-14 w-14 overflow-hidden rounded-full border border-cream"><ProductImage path={c.image_path} alt="" /></div></Td>
-            <Td>{c.name}<br /><span className="text-xs text-muted">{c.code}{!c.is_active && " · inactive in shop"}</span></Td>
+            <Td>{c.name}<br />{!c.is_active && <span className="text-xs text-muted">inactive in shop</span>}</Td>
             <Td>
               <form action={saveCategory} className="flex flex-wrap items-center gap-2">
                 <input type="hidden" name="id" value={c.id} />
