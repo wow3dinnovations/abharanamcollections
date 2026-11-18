@@ -163,10 +163,18 @@ export function TagPrinter({
           >
             Test print one tag with outline
           </Button>
+          <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-stone-800">
+            <p className="font-semibold">Seeing a print window every time?</p>
+            <p className="mt-1">
+              Download the setup file, double-click it once on the shop computer, then always open the shop software from
+              the new <b>Print tags directly</b> desktop icon. Tags then print straight to the tag printer.
+            </p>
+            <a href="/downloads/Setup-Direct-Tag-Printing.cmd" download className="mt-2 inline-block font-semibold text-amber-900 underline">
+              Download setup file (Windows)
+            </a>
+          </div>
           <p className="text-xs text-muted">
-            Prints on this page, no new tab. To skip the print window too, open the shop software with the
-            “Print tags directly” Chrome shortcut (see the guide). If the print sits too far left or right, change{" "}
-            <b>Move left / right</b> below and print a test tag again.
+            If the print sits too far left or right, change <b>Move left / right</b> below and print a test tag again.
           </p>
         </div>
       </div>
