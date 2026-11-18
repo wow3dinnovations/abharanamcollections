@@ -120,6 +120,91 @@ export async function setStock(form: FormData) {
   refreshAll();
 }
 
+/**
+ * Stock page: set a product's total count (locations are not shown there). The change goes to the place the
+ * product is kept (its purchase location), or where most of its pieces are; a decrease takes from the other
+ * places once that one is empty.
+ */
+export async function setTotalStock(form: FormData) {
+  const { supabase } = await requireAdmin();
+  const productId = str(form, "product_id");
+  const qty = Number(str(form, "qty"));
+  if (!productId) throw new Error("Choose a product.");
+  if (!Number.isInteger(qty) || qty < 0) throw new Error("Quantity must be 0 or more.");
+  const [{ data: stock }, { data: sp }, { data: locs }] = await Promise.all([
+    supabase.from("shop_stock").select("location_id, qty").eq("product_id", productId),
+    supabase.from("shop_products").select("location_id").eq("product_id", productId).maybeSingle(),
+    supabase.from("shop_locations").select("id, is_active").order("name"),
+  ]);
+  const rows = new Map((stock ?? []).map((s) => [s.location_id, s.qty]));
+  const total = [...rows.values()].reduce((a, n) => a + n, 0);
+  if (qty === total) return;
+  const active = new Set((locs ?? []).filter((l) => l.is_active).map((l) => l.id));
+  const busiest = [...rows.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+  const main =
+    (sp?.location_id && active.has(sp.location_id) ? sp.location_id : null) ??
+    (busiest && rows.get(busiest)! > 0 ? busiest : null) ??
+    [...active][0] ??
+    sp?.location_id ??
+    null;
+  if (!main) throw new Error("Add a location in Vendors & settings first.");
+  const target = new Map(rows);
+  if (qty > total) {
+    target.set(main, (target.get(main) ?? 0) + (qty - total));
+  } else {
+    let less = total - qty;
+    for (const loc of [main, ...[...rows.keys()].filter((l) => l !== main)]) {
+      const take = Math.min(less, target.get(loc) ?? 0);
+      if (take) target.set(loc, (target.get(loc) ?? 0) - take);
+      less -= take;
+      if (!less) break;
+    }
+  }
+  for (const [loc, n] of target) {
+    if ((rows.get(loc) ?? 0) === n) continue;
+    check(await supabase.rpc("shop_set_stock", { p_product: productId, p_location: loc, p_qty: n, p_note: str(form, "note") }));
+  }
+  refreshAll();
+}
+
+/**
+ * Delete products. One that was never on a bill, order or return is removed for good (with its photo).
+ * One that was sold is only switched off with its stock set to 0, so old bills and reports keep it; it is hidden
+ * from the lists and can be found with "Show deleted".
+ */
+export async function deleteProducts(ids: string[]): Promise<Result<{ removed: number; hidden: number }>> {
+  try {
+    const { supabase } = await requireAdmin();
+    const list = [...new Set(ids.filter((i) => /^[0-9a-f-]{36}$/i.test(i)))].slice(0, 500);
+    if (!list.length) return { ok: false, error: "Tick the products to delete." };
+    const used = new Set<string>();
+    for (const table of ["shop_sale_items", "shop_return_items", "order_items", "enquiry_items"] as const) {
+      const { data, error } = await supabase.from(table).select("product_id").in("product_id", list);
+      if (error) return fail(error);
+      for (const r of data ?? []) if (r.product_id) used.add(r.product_id);
+    }
+    const sold = list.filter((i) => used.has(i));
+    const free = list.filter((i) => !used.has(i));
+    for (const id of sold) {
+      const { data: stock } = check(await supabase.from("shop_stock").select("location_id, qty").eq("product_id", id).gt("qty", 0));
+      for (const s of stock ?? []) {
+        check(await supabase.rpc("shop_set_stock", { p_product: id, p_location: s.location_id, p_qty: 0, p_note: "Product deleted" }));
+      }
+    }
+    if (sold.length) check(await supabase.from("products").update({ is_active: false }).in("id", sold));
+    if (free.length) {
+      const { data: photos } = check(await supabase.from("products").select("image_paths").in("id", free));
+      check(await supabase.from("products").delete().in("id", free));
+      const paths = (photos ?? []).flatMap((p) => p.image_paths).filter((p) => p.startsWith("shop/"));
+      if (paths.length) await supabase.storage.from("catalog").remove(paths);
+    }
+    refreshAll();
+    return { ok: true, removed: free.length, hidden: sold.length };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
 // ------------------------------------------------------------------------------------------ billing
 /** have = pieces in stock over all locations (a bill sells from wherever the piece is). */
 export type BillProduct = {

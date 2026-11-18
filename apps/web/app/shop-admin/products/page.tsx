@@ -4,13 +4,14 @@ import { Badge, Button, Input, PageHeader, Select, Table, Td } from "@/component
 import { ProductImage } from "@/components/ProductImage";
 import { requireAdmin } from "@/lib/admin";
 import { getMasters, searchTerm } from "@/lib/shop/server";
+import { ProductTickTools } from "@/components/shop/ProductTickTools";
 
 const PAGE = 50;
 
 export default async function ShopProducts({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; category?: string; location?: string; vendor?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; category?: string; location?: string; vendor?: string; page?: string; off?: string }>;
 }) {
   const sp = await searchParams;
   const { supabase } = await requireAdmin();
@@ -32,6 +33,8 @@ export default async function ShopProducts({
   if (sp.category) query = query.eq("category_id", sp.category);
   if (sp.location) query = query.eq("shop_products.location_id", sp.location);
   if (sp.vendor) query = query.eq("shop_products.vendor_id", sp.vendor);
+  // Deleted (and switched off) products are hidden unless asked for.
+  if (!sp.off) query = query.eq("is_active", true);
   const { data, count } = await query;
   // A barcode typed into the search box finds its product too.
   let rows = data ?? [];
@@ -71,14 +74,12 @@ export default async function ShopProducts({
           <option value="">All locations</option>
           {masters.locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
         </Select>
+        <label className="flex items-center gap-1 self-center text-sm"><input type="checkbox" name="off" value="1" defaultChecked={!!sp.off} /> Show deleted / switched off</label>
         <Button variant="secondary">Search</Button>
       </form>
 
       <form action="/shop-admin/tags" method="get">
-        <div className="mb-2 flex items-center gap-3">
-          <Button>Print tags for ticked</Button>
-          <span className="text-xs text-muted">Tick products, then print their tags.</span>
-        </div>
+        <ProductTickTools />
         <Table head={["", "", "Code", "Name", "Category", "Vendor", "Bought at", "Rate", "Price", "Stock"]}>
           {rows.map((p) => (
             <tr key={p.id} className={p.is_active ? "" : "opacity-50"}>
