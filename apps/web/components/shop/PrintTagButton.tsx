@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { tagPrintData } from "@/app/shop-admin/actions";
-import { printHtml, tagSheetHtml } from "@/lib/shop/tags";
+import { printTags } from "@/lib/shop/tags";
 
 /** Prints the tags of these products right here (no new page or tab), with the saved tag size and layout. */
 export function PrintTagButton({ ids, className, children }: { ids: string[]; className?: string; children?: React.ReactNode }) {
@@ -20,9 +20,9 @@ export function PrintTagButton({ ids, className, children }: { ids: string[]; cl
             try {
               const d = await tagPrintData(ids);
               if (!d.items.length) return setError("Product not found.");
-              printHtml(tagSheetHtml(d.items, d.width, d.height, d.brand, d.layout));
-            } catch {
-              setError("Could not print. Please try again.");
+              await printTags(d.items, d.width, d.height, d.brand, d.layout);
+            } catch (e) {
+              setError(e instanceof Error && e.message ? e.message : "Could not print. Please try again.");
             }
           })
         }
