@@ -16,6 +16,12 @@ export type TagItem = {
 /** Bangle sizes offered when the category is Bangles. */
 export const BANGLE_SIZES = ["2.0", "2.2", "2.4", "2.6", "2.8", "2.10", "2.12", "2.14", "2.16", "2.18"];
 
+/** Child (kids) bangle sizes, offered next to the adult sizes. */
+export const CHILD_BANGLE_SIZES = ["2", "4", "6", "8", "10", "12", "14"];
+
+/** Every bangle size in the lists: adult first, then child. */
+export const ALL_BANGLE_SIZES = [...BANGLE_SIZES, ...CHILD_BANGLE_SIZES];
+
 /** "Bangles", "Bangle sets", "Kada bangles"... */
 export function isBangleCategory(name: string | null | undefined) {
   return /bangle/i.test(name ?? "");

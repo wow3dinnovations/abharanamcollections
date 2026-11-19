@@ -8,7 +8,7 @@ import { Button, Field, Input, Select, Textarea } from "@/components/admin/ui";
 import { PhotoPicker } from "@/components/shop/PhotoPicker";
 import { PrintTagButton } from "@/components/shop/PrintTagButton";
 import { uploadProductPhoto } from "@/lib/shop/photo";
-import { BANGLE_SIZES, isBangleCategory } from "@/lib/shop/tags";
+import { ALL_BANGLE_SIZES, BANGLE_SIZES, CHILD_BANGLE_SIZES, isBangleCategory } from "@/lib/shop/tags";
 
 type Option = { id: string; name: string; is_active?: boolean };
 export type ProductFormProps = {
@@ -244,8 +244,13 @@ export function ProductForm(props: ProductFormProps) {
           <Field label={`Bangle size${isNew ? " *" : ""} (printed on the tag)`}>
             <Select ref={sizeInput} required={isNew} value={f.size} onChange={(e) => set("size", e.target.value)} className="font-medium">
               <option value="">Choose size…</option>
-              {BANGLE_SIZES.map((z) => <option key={z} value={z}>{z}</option>)}
-              {f.size && !BANGLE_SIZES.includes(f.size) && <option value={f.size}>{f.size}</option>}
+              <optgroup label="Adult sizes">
+                {BANGLE_SIZES.map((z) => <option key={z} value={z}>{z}</option>)}
+              </optgroup>
+              <optgroup label="Child sizes">
+                {CHILD_BANGLE_SIZES.map((z) => <option key={z} value={z}>{z}</option>)}
+              </optgroup>
+              {f.size && !ALL_BANGLE_SIZES.includes(f.size) && <option value={f.size}>{f.size}</option>}
             </Select>
           </Field>
         )}
