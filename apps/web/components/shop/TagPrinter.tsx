@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { findForBill, saveTagLayout, setProductSize, type BillProduct } from "@/app/shop-admin/actions";
 import { Button, Card, Field, Input, Select } from "@/components/admin/ui";
-import { BANGLE_SIZES, DEFAULT_LAYOUT, LAYOUT_LIMITS, printHelperStatus, printTags, readLayout, tagHtml, type TagItem, type TagLayout } from "@/lib/shop/tags";
+import { ALL_BANGLE_SIZES, BANGLE_SIZES, CHILD_BANGLE_SIZES, DEFAULT_LAYOUT, LAYOUT_LIMITS, printHelperStatus, printTags, readLayout, tagHtml, type TagItem, type TagLayout } from "@/lib/shop/tags";
 
 const SAMPLE: TagItem = { id: "sample", sku: "IB850G", name: "Dollar", price: 499, barcode: "100023", copies: 1, size: "" };
 
@@ -144,8 +144,13 @@ export function TagPrinter({
                         aria-label={`Bangle size of ${t.sku}`}
                       >
                         <option value="">–</option>
-                        {BANGLE_SIZES.map((z) => <option key={z} value={z}>{z}</option>)}
-                        {t.size && !BANGLE_SIZES.includes(t.size) && <option value={t.size}>{t.size}</option>}
+                        <optgroup label="Adult sizes">
+                          {BANGLE_SIZES.map((z) => <option key={z} value={z}>{z}</option>)}
+                        </optgroup>
+                        <optgroup label="Child sizes">
+                          {CHILD_BANGLE_SIZES.map((z) => <option key={z} value={z}>{z}</option>)}
+                        </optgroup>
+                        {t.size && !ALL_BANGLE_SIZES.includes(t.size) && <option value={t.size}>{t.size}</option>}
                       </Select>
                     </label>
                   )}
