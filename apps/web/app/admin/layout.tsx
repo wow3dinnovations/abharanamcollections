@@ -26,6 +26,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             {n.label}
           </Link>
         ))}
+        <Link href="/shop-admin/analytics" className="shrink-0 rounded px-3 py-2 text-sm hover:bg-cream">
+          Analytics
+        </Link>
         <Link href="/shop-admin" className="shrink-0 rounded px-3 py-2 text-sm font-medium text-maroon hover:bg-cream">
           Shop software
         </Link>

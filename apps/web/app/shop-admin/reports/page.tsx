@@ -142,7 +142,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           </Table>
           {!bd.payments.length && <p className="text-sm text-muted">No sales.</p>}
           <p className="mt-3 text-xs text-muted">
-            Vendor-wise sales are on <Link href={`/shop-admin/vendors?from=${from}&to=${to}`} className="underline">Vendor performance</Link>.
+            Vendor-wise sales are on <Link href={`/shop-admin/analytics?view=vendors&from=${from}&to=${to}`} className="underline">Analytics → Vendors</Link>.
           </p>
         </Card>
       </div>

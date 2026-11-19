@@ -29,8 +29,8 @@ export const SHOP_NAV: { title: string; items: { href: string; label: string }[]
   {
     title: "Reports",
     items: [
+      { href: "/shop-admin/analytics", label: "Analytics" },
       { href: "/shop-admin/reports", label: "Profit & loss" },
-      { href: "/shop-admin/vendors", label: "Vendor performance" },
     ],
   },
   {
