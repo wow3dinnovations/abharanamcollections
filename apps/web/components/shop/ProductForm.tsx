@@ -306,7 +306,7 @@ export function ProductForm(props: ProductFormProps) {
       <fieldset className="rounded-xl border border-cream bg-white p-4">
         <legend className="px-1 text-sm font-semibold">Photo {!isNew && <span className="font-normal text-muted">(replaces the main photo)</span>}</legend>
         <PhotoPicker onPick={setPhoto} disabled={pending} resetKey={photoTick} />
-        <p className="mt-1 text-[11px] text-muted">Take photo opens the camera on a phone or tablet. Choose photo picks one from the gallery or the computer.</p>
+        <p className="mt-1 text-[11px] text-muted">Take photo opens the camera (the webcam on a computer). Choose photo picks one from the gallery or the computer.</p>
       </fieldset>
 
       <details className="rounded-xl border border-cream bg-white p-4" open={!isNew}>
