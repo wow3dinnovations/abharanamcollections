@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import type { Database } from "@abh/db";
 import { cookies } from "next/headers";
+import { cache } from "react";
 
 export async function createClient() {
   const cookieStore = await cookies();
@@ -22,9 +23,14 @@ export async function createClient() {
   );
 }
 
-/** The signed-in user and their role, or null when signed out. */
-export async function getSessionProfile() {
-  const supabase = await createClient();
+/** One Supabase client per page request. A shop page asks for the admin session 5-10 times (layouts, page,
+ *  report helpers); building a new client and re-checking the login each time used up the Cloudflare
+ *  Worker's CPU limit (error 1102). React's cache() shares one client and one login check per request. */
+export const getRequestClient = cache(createClient);
+
+/** The signed-in user and their role, or null when signed out (checked once per request). */
+export const getSessionProfile = cache(async () => {
+  const supabase = await getRequestClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -35,7 +41,7 @@ export async function getSessionProfile() {
     .eq("id", user.id)
     .single();
   return { user, profile, isAdmin: profile?.role === "admin" };
-}
+});
 
 /** Where to go after logging in: the shop admin lands on the shop software (with the code search),
  *  unless the login was started from a particular page. */

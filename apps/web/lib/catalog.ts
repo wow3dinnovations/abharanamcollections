@@ -2,7 +2,7 @@ import "server-only";
 import { PAGE_SIZE, priceBand, searchTerms, type ShopFilters } from "@abh/core";
 import type { Tables } from "@abh/db";
 import { cache } from "react";
-import { createClient } from "@/lib/supabase/server";
+import { getRequestClient as createClient } from "@/lib/supabase/server";
 
 export type CatalogItem = Omit<Tables<"catalog">, "search">;
 export type CategorySummary = Tables<"category_summary">;
