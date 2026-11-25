@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { saveProduct, suggestCode, type ProductInput } from "@/app/shop-admin/actions";
+import { addCategory, saveProduct, suggestCode, type ProductInput } from "@/app/shop-admin/actions";
 import { Button, Field, Input, Select, Textarea } from "@/components/admin/ui";
 import { PhotoPicker } from "@/components/shop/PhotoPicker";
 import { PrintTagButton } from "@/components/shop/PrintTagButton";
@@ -36,7 +36,10 @@ function blank(multiplier: number): ProductInput {
   };
 }
 
+const NEW_CATEGORY = "__new__";
+
 const MATCH_TEXT: Record<string, string> = {
+  vendor_location: "same vendor and location (any category)",
   category_vendor_location: "same category, vendor and location",
   category_location: "same category and location (first one from this vendor)",
   new: "first product in this category at this location",
@@ -59,6 +62,40 @@ export function ProductForm(props: ProductFormProps) {
   const rateInput = useRef<HTMLInputElement>(null);
   const sizeInput = useRef<HTMLSelectElement>(null);
   const loaded = useRef(!isNew);
+  // Categories added on this page (until the page reloads with them).
+  const [addedCats, setAddedCats] = useState<Option[]>([]);
+  const categories = [...props.categories, ...addedCats.filter((a) => !props.categories.some((c) => c.id === a.id))];
+  const [newCat, setNewCat] = useState<string | null>(null);
+  const [catPending, startCat] = useTransition();
+  const [catError, setCatError] = useState("");
+
+  function chooseCategory(id: string) {
+    if (id === NEW_CATEGORY) {
+      setNewCat("");
+      setCatError("");
+      return;
+    }
+    setF((old) => ({ ...old, category_id: id, subcategory_id: "" }));
+  }
+
+  function createCategory() {
+    const name = (newCat ?? "").trim();
+    if (!name) {
+      setCatError("Enter the category name.");
+      return;
+    }
+    startCat(async () => {
+      const res = await addCategory(name);
+      if (!res.ok) {
+        setCatError(res.error);
+        return;
+      }
+      setAddedCats((list) => [...list.filter((c) => c.id !== res.id), { id: res.id, name: res.name, is_active: true }]);
+      setF((old) => ({ ...old, category_id: res.id, subcategory_id: "" }));
+      setNewCat(null);
+      setCatError("");
+    });
+  }
 
   const set = (k: keyof ProductInput, v: string | boolean) => setF((old) => ({ ...old, [k]: v }));
 
@@ -113,7 +150,7 @@ export function ProductForm(props: ProductFormProps) {
     if (!priceTouched && auto !== "") setF((old) => (old.price === auto ? old : { ...old, price: auto }));
   }, [auto, priceTouched]);
 
-  const categoryName = props.categories.find((c) => c.id === f.category_id)?.name ?? "";
+  const categoryName = categories.find((c) => c.id === f.category_id)?.name ?? "";
 
   function submit(mode: "open" | "next") {
     setError("");
@@ -164,7 +201,7 @@ export function ProductForm(props: ProductFormProps) {
     });
   }
 
-  const bangle = isBangleCategory(props.categories.find((c) => c.id === f.category_id)?.name);
+  const bangle = isBangleCategory(categories.find((c) => c.id === f.category_id)?.name);
   const activeOnly = (list: Option[], keep: string) => list.filter((o) => o.is_active !== false || o.id === keep);
 
   return (
@@ -199,10 +236,32 @@ export function ProductForm(props: ProductFormProps) {
       <fieldset className="grid gap-3 rounded-xl border border-cream bg-white p-4 sm:grid-cols-3">
         <legend className="px-1 text-sm font-semibold">Where it is from {isNew && <span className="font-normal text-muted">(stays selected for the next product)</span>}</legend>
         <Field label="Category *">
-          <Select required value={f.category_id} onChange={(e) => { set("category_id", e.target.value); set("subcategory_id", ""); }}>
-            <option value="">Choose…</option>
-            {activeOnly(props.categories, f.category_id).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </Select>
+          {newCat === null ? (
+            <Select required value={f.category_id} onChange={(e) => chooseCategory(e.target.value)}>
+              <option value="">Choose…</option>
+              {activeOnly(categories, f.category_id).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              <option value={NEW_CATEGORY}>+ Add new category…</option>
+            </Select>
+          ) : (
+            <div className="flex gap-1">
+              <Input
+                autoFocus
+                value={newCat}
+                maxLength={80}
+                placeholder="New category, e.g. Anklets"
+                aria-label="New category name"
+                className="min-w-0 flex-1"
+                onChange={(e) => setNewCat(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { e.preventDefault(); createCategory(); }
+                  if (e.key === "Escape") { e.preventDefault(); setNewCat(null); setCatError(""); }
+                }}
+              />
+              <Button type="button" disabled={catPending} onClick={createCategory}>{catPending ? "Adding…" : "Add"}</Button>
+              <Button type="button" variant="secondary" disabled={catPending} onClick={() => { setNewCat(null); setCatError(""); }}>Cancel</Button>
+            </div>
+          )}
+          {catError && <span className="text-[11px] text-red-700" role="alert">{catError}</span>}
         </Field>
         <Field label="Vendor">
           <Select value={f.vendor_id} onChange={(e) => set("vendor_id", e.target.value)}>

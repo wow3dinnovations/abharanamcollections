@@ -1,5 +1,5 @@
 begin;
-select plan(28);
+select plan(31);
 
 insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-0000000000a1', 'owner@test.local'),
@@ -41,6 +41,15 @@ select is(public.shop_next_code('10000000-0000-0000-0000-000000000001', '2000000
 select is(public.shop_next_code('10000000-0000-0000-0000-000000000001', null,
                                 '30000000-0000-0000-0000-000000000001')->>'sku', 'ABH-ER-000001',
   'other location starts its own series');
+-- One series per vendor + location, whatever the category.
+insert into public.categories (id, name, code) values ('10000000-0000-0000-0000-000000000002', 'Necklaces', 'NK');
+select is(public.shop_next_code('10000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000001',
+                                '30000000-0000-0000-0000-000000000002')->>'sku', 'IB4502',
+  'another category from the same vendor + location continues the series');
+select is(public.shop_next_code('10000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000001',
+                                '30000000-0000-0000-0000-000000000002')->>'match', 'vendor_location', 'matched on vendor + location');
+select is(public.shop_next_code(null, '20000000-0000-0000-0000-000000000001',
+                                '30000000-0000-0000-0000-000000000002')->>'sku', 'IB4502', 'works before a category is chosen');
 select is(public.shop_bump_code('IH615-LOT009'), 'IH615-LOT010', 'keeps leading zeros');
 select is(public.shop_bump_code('IB99'), 'IB100', 'grows when needed');
 
