@@ -1,11 +1,11 @@
 import { notFound } from "next/navigation";
-import { createClient, getSessionProfile } from "@/lib/supabase/server";
+import { getRequestClient, getSessionProfile } from "@/lib/supabase/server";
 
 /** Supabase client for admin server actions. Stops non-admins before any query runs (RLS also enforces this). */
 export async function requireAdmin() {
   const session = await getSessionProfile();
   if (!session?.isAdmin) notFound();
-  return { supabase: await createClient(), user: session.user };
+  return { supabase: await getRequestClient(), user: session.user };
 }
 
 export function str(form: FormData, key: string): string {

@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { signOut } from "@/app/login/actions";
 import { CodeSearch } from "@/components/shop/CodeSearch";
 import { ShopMobileMenu, ShopNav } from "@/components/shop/ShopNav";
-import { createClient, getSessionProfile } from "@/lib/supabase/server";
+import { getRequestClient, getSessionProfile } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Shop software", robots: { index: false, follow: false } };
 
@@ -12,7 +12,7 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
   const session = await getSessionProfile();
   // Only the shop admin. Everyone else gets a plain 404, so the page isn't advertised.
   if (!session?.isAdmin) notFound();
-  const supabase = await createClient();
+  const supabase = await getRequestClient();
   const [{ count: pending, error: noReturns }, { error: noReports }] = await Promise.all([
     supabase.from("shop_returns").select("id", { count: "exact", head: true }).eq("status", "pending"),
     supabase.rpc("shop_report", { p_from: "2026-01-01", p_to: "2026-01-01", p_by: "total" }),
