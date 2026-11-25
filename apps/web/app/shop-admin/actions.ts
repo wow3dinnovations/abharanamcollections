@@ -462,8 +462,40 @@ export async function saveShopCategory(form: FormData) {
     ...(id ? {} : { is_active: true }),
   };
   if (!row.name) throw new Error("Enter the category name.");
+  if (!id) {
+    const { data: cats } = check(await supabase.from("categories").select("name"));
+    if ((cats ?? []).some((c) => c.name.trim().toLowerCase() === row.name.trim().toLowerCase())) {
+      throw new Error(`A category called ${row.name} is already there.`);
+    }
+  }
   check(id ? await supabase.from("categories").update(row).eq("id", id) : await supabase.from("categories").insert({ ...row, slug: "" }));
   refreshAll();
+}
+
+/**
+ * Add a category straight from the Add product page. A category with the same name is reused (and turned on
+ * if it was off) instead of making a second one.
+ */
+export async function addCategory(name: string): Promise<Result<{ id: string; name: string }>> {
+  try {
+    const { supabase } = await requireAdmin();
+    const clean = name.trim().replace(/\s+/g, " ").slice(0, 80);
+    if (!clean) return { ok: false, error: "Enter the category name." };
+    const { data: cats } = check(await supabase.from("categories").select("id, name, is_active"));
+    const same = (cats ?? []).find((c) => c.name.trim().toLowerCase() === clean.toLowerCase());
+    if (same?.is_active) return { ok: true, id: same.id, name: same.name };
+    let added = same ? { id: same.id, name: same.name } : null;
+    if (same) {
+      check(await supabase.from("categories").update({ is_active: true }).eq("id", same.id));
+    } else {
+      added = check(await supabase.from("categories").insert({ name: clean, slug: "", is_active: true }).select("id, name").single()).data;
+    }
+    if (!added) return { ok: false, error: "The category was not added. Please try again." };
+    refreshAll();
+    return { ok: true, ...added };
+  } catch (e) {
+    return fail(e);
+  }
 }
 
 /** Turn a category that was switched off back on (only shown for categories that are off). */

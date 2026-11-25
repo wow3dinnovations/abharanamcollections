@@ -9,11 +9,9 @@ export default async function NewShopProduct({ searchParams }: { searchParams: P
   return (
     <div>
       <PageHeader title="Add product" />
-      {(!m.categories.length || !m.locations.length) && (
+      {!m.locations.length && (
         <p className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-          First add {!m.categories.length ? "categories (Website admin → Categories)" : ""}
-          {!m.categories.length && !m.locations.length ? " and " : ""}
-          {!m.locations.length ? <>your shop locations (<Link className="underline" href="/shop-admin/setup">Vendors &amp; settings</Link>)</> : ""}, or{" "}
+          First add your shop locations (<Link className="underline" href="/shop-admin/setup">Vendors &amp; settings</Link>), or{" "}
           <Link className="underline" href="/shop-admin/import">import the shop computer&apos;s data</Link>.
         </p>
       )}
